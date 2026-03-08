@@ -1,0 +1,273 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sheet-bg: #f8f9fa;
+  --sheet-surface: #ffffff;
+  --sheet-border: #e2e4e9;
+  --sheet-accent: #1a73e8;
+  --sheet-accent-dim: #1557b0;
+  --sheet-text: #1a1a1a;
+  --sheet-muted: #6b7280;
+  --sheet-header: #f1f3f4;
+  --sheet-cell: #ffffff;
+  --sheet-cell-hover: #f8f9fa;
+  --sheet-cell-selected: #e8f0fe;
+  --sheet-cell-active: #e8f0fe;
+  --col-resize-handle: 4px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--sheet-bg);
+  color: var(--sheet-text);
+}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--sheet-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c7cd;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a8b0;
+}
+
+/* ── Grid ── */
+.grid-container {
+  display: grid;
+  overflow: auto;
+  position: relative;
+}
+
+.grid-cell {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-right: 1px solid var(--sheet-border);
+  border-bottom: 1px solid var(--sheet-border);
+  font-size: 13px;
+  padding: 0 4px;
+  line-height: 24px;
+  cursor: default;
+  user-select: none;
+  background: var(--sheet-cell);
+  color: #1a1a1a;
+  transition: background 0.08s;
+}
+
+.grid-cell:hover {
+  background: var(--sheet-cell-hover);
+}
+
+.grid-cell.active {
+  background: var(--sheet-cell-active);
+  outline: 2px solid var(--sheet-accent);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+.grid-cell.editing {
+  background: #ffffff;
+  z-index: 10;
+  overflow: visible;
+}
+
+.grid-cell.selected {
+  background: var(--sheet-cell-selected);
+}
+
+.grid-cell input.cell-input {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  border: none;
+  outline: none;
+  padding: 0 4px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a1a;
+  width: 200%;
+  min-width: 100%;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--sheet-accent);
+}
+
+.grid-header-cell {
+  background: var(--sheet-header);
+  border-right: 1px solid var(--sheet-border);
+  border-bottom: 2px solid #c1c7cd;
+  font-size: 12px;
+  font-weight: 600;
+  color: #444746;
+  text-align: center;
+  user-select: none;
+  cursor: default;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-header-cell:hover {
+  background: #e2e4e9;
+  color: #1a1a1a;
+}
+
+.grid-header-cell.dragging-over {
+  background: rgba(26, 115, 232, 0.15);
+}
+
+/* ── Resize handles ── */
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--col-resize-handle);
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle.resizing {
+  background: var(--sheet-accent);
+}
+
+.row-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--col-resize-handle);
+  cursor: row-resize;
+  z-index: 5;
+}
+
+.row-resize-handle:hover,
+.row-resize-handle.resizing {
+  background: var(--sheet-accent);
+}
+
+/* ── Presence cursors ── */
+.presence-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  border: 2px solid currentColor;
+  inset: 0;
+}
+
+.presence-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  color: white;
+  background: currentColor;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+/* ── Formula bar ── */
+.formula-bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  border-bottom: 1px solid var(--sheet-border);
+  background: var(--sheet-surface);
+  padding: 0 8px;
+  gap: 8px;
+}
+
+.formula-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--sheet-text);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  gap: 2px;
+  background: var(--sheet-surface);
+  border-bottom: 1px solid var(--sheet-border);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.toolbar-btn:hover {
+  background: #e2e4e9;
+  color: #1a1a1a;
+}
+
+.toolbar-btn.active {
+  background: var(--sheet-accent);
+  color: white;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--sheet-border);
+  margin: 0 4px;
+}
+
+/* ── Color picker ── */
+.color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+/* ── Save indicator ── */
+@keyframes saving-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.saving-pulse {
+  animation: saving-pulse 1s ease-in-out infinite;
+}
