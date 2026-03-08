@@ -674,8 +674,8 @@ export function SpreadsheetGrid() {
   function handleCellMouseDown(e: MouseEvent, cellId: CellId) {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
-      setMultiSelected((prev) => {
-        const next = new Set(prev);
+      setMultiSelected((prev: Set<string>) => {
+        const next = new Set<string>(prev);
         next.has(cellId) ? next.delete(cellId) : next.add(cellId);
         return next;
       });
