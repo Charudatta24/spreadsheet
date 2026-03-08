@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useAuthInit } from "@/hooks/useAuthInit";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { AuthGate } from "./AuthGate";
