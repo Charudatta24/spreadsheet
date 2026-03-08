@@ -683,7 +683,7 @@ export function evaluateFormula(raw: string, grid: GridData): string {
 
   const expr = raw.slice(1).trim().toUpperCase();
 
-  const fnMatch = expr.match(/^([A-Z][A-Z0-9]*)\s*\((.*)?\)$/s);
+  const fnMatch = expr.match(/^([A-Z][A-Z0-9]*)\s*\(([\s\S]*)?\)$/);
   if (fnMatch) {
     const fnName  = fnMatch[1];
     const argsRaw = fnMatch[2] ?? "";
