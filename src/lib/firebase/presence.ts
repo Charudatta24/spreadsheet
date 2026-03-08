@@ -4,15 +4,14 @@ import {
   onDisconnect,
   onValue,
   off,
-  serverTimestamp,
   remove,
 } from "firebase/database";
 import { rtdb } from "./client";
 import type { PresenceUser, CellId } from "@/types";
 
 const PRESENCE_ROOT = "presence";
-const HEARTBEAT_INTERVAL = 15_000; // 15s
-const STALE_THRESHOLD = 30_000;    // 30s - consider user offline
+const HEARTBEAT_INTERVAL = 15_000;
+const STALE_THRESHOLD = 30_000;
 
 // ─── Join / Leave ─────────────────────────────────────────────────────────────
 
@@ -31,11 +30,8 @@ export function joinDocument(
   };
 
   set(userRef, data).catch(console.error);
-
-  // Auto-remove on disconnect
   onDisconnect(userRef).remove().catch(console.error);
 
-  // Heartbeat to keep presence alive
   const interval = setInterval(() => {
     set(ref(rtdb, `${PRESENCE_ROOT}/${docId}/${user.uid}/lastSeen`), Date.now())
       .catch(console.error);
@@ -73,7 +69,6 @@ export function subscribePresence(
     if (snap.exists()) {
       snap.forEach((child) => {
         const data = child.val() as PresenceUser & { lastSeen: number };
-        // Filter out stale users
         if (now - data.lastSeen < STALE_THRESHOLD) {
           users.push({
             uid: data.uid,

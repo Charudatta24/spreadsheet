@@ -88,8 +88,9 @@ export async function getDocumentMeta(
   };
 }
 
+// Prefix with _ to indicate intentionally unused parameter
 export async function listDocuments(
-  userId: string
+  _userId: string
 ): Promise<DocumentMeta[]> {
   const q = query(
     collection(db, DOCS_COLLECTION),

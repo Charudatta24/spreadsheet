@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { joinDocument, updateFocusedCell, subscribePresence } from "@/lib/firebase/presence";
 import { useEditorStore } from "@/lib/sync/store";
 import { useAuthStore } from "@/lib/sync/authStore";
-import type { CellId } from "@/types";
 
 export function usePresence(docId: string): void {
   const { user } = useAuthStore();

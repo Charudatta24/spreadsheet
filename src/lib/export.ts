@@ -1,4 +1,4 @@
-import type { GridData, ColWidths, SheetDocument } from "@/types";
+import type { GridData, SheetDocument } from "@/types";
 import { addressToCellId } from "@/lib/formula";
 
 export function exportToCSV(
@@ -12,18 +12,15 @@ export function exportToCSV(
     for (let c = 0; c < numCols; c++) {
       const id = addressToCellId(c, r);
       const val = cells[id]?.computed ?? "";
-      // Escape CSV
       if (val.includes(",") || val.includes('"') || val.includes("\n")) {
         row.push(`"${val.replace(/"/g, '""')}"`);
       } else {
         row.push(val);
       }
     }
-    // Trim trailing empty cells
     while (row.length > 0 && row[row.length - 1] === "") row.pop();
     rows.push(row.join(","));
   }
-  // Trim trailing empty rows
   while (rows.length > 0 && rows[rows.length - 1] === "") rows.pop();
   return rows.join("\n");
 }
@@ -39,7 +36,6 @@ export function downloadCSV(doc: SheetDocument, numRows: number, numCols: number
   URL.revokeObjectURL(url);
 }
 
-/** Build a simple HTML table for copy-paste into Excel */
 export function exportToHTML(
   cells: GridData,
   numRows: number,

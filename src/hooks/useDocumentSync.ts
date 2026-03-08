@@ -67,6 +67,9 @@ export function useDocumentSync(docId: string): void {
 
   // ── Write listener ────────────────────────────────────────────────────────
   useEffect(() => {
+    // Copy ref value into local variable for safe use in cleanup
+    const localDebounceMap = debounceMap.current;
+
     const handleCellWrite = (e: Event) => {
       const { cellId, data } = (
         e as CustomEvent<{ cellId: CellId; data: CellData }>
@@ -75,8 +78,7 @@ export function useDocumentSync(docId: string): void {
       addPendingWrite(cellId);
       setSaveState("saving");
 
-      // Clear existing debounce for this cell
-      const existing = debounceMap.current.get(cellId);
+      const existing = localDebounceMap.get(cellId);
       if (existing) clearTimeout(existing);
 
       const timer = setTimeout(async () => {
@@ -88,10 +90,10 @@ export function useDocumentSync(docId: string): void {
           console.error("Write failed:", err);
           setSaveState("error");
         }
-        debounceMap.current.delete(cellId);
+        localDebounceMap.delete(cellId);
       }, DEBOUNCE_MS);
 
-      debounceMap.current.set(cellId, timer);
+      localDebounceMap.set(cellId, timer);
     };
 
     const handleTitleWrite = async (e: Event) => {
@@ -142,7 +144,8 @@ export function useDocumentSync(docId: string): void {
       window.removeEventListener("sheet:col-widths", handleColWidths);
       window.removeEventListener("sheet:row-heights", handleRowHeights);
       window.removeEventListener("sheet:col-order", handleColOrder);
-      debounceMap.current.forEach((t) => clearTimeout(t));
+      // Use local copy of the map in cleanup (fixes react-hooks/exhaustive-deps warning)
+      localDebounceMap.forEach((t) => clearTimeout(t));
     };
   }, [docId, addPendingWrite, removePendingWrite, setSaveState]);
 }
