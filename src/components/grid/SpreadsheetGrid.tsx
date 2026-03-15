@@ -12,13 +12,12 @@ import {
 } from "react";
 import { useEditorStore, DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT } from "@/lib/sync/store";
 import { useSelectionStore } from "@/lib/sync/selectionStore";
-import { addressToCellId, cellIdToAddress } from "@/lib/formula";
+import type { CellId, CellData, CellAddress, PresenceUser, CellFormat } from "@/types";
+import { cellIdToAddress, addressToCellId } from "@/lib/formula";
 import { dispatchCellWrite, dispatchColWidths, dispatchRowHeights, dispatchColOrder } from "@/hooks/useDocumentSync";
-import type { CellId } from "@/types";
 
 const NUM_ROWS = 100;
 const ROW_HEADER_WIDTH = 48;
-const DEFAULT_TEXT_COLOR = "#1a1a1a";
 
 function colLabel(col: number): string {
   let label = "";
@@ -31,9 +30,7 @@ function colLabel(col: number): string {
   return label;
 }
 
-function ensureColor(format: Record<string, unknown> | undefined) {
-  return { ...format, color: (format?.color as string) ?? DEFAULT_TEXT_COLOR };
-}
+// function ensureColor removed as we use ensureColorPersistent now
 
 function formatNum(n: number, decimals = 6): string {
   if (!isFinite(n)) return "—";
@@ -83,46 +80,46 @@ function buildStatEntries(nums: number[]): Record<string, StatEntry[]> {
 
   const aggregates: StatEntry[] = [
     ...(!isSingle ? [
-      { label: "SUM",     value: formatNum(s.sum),    op: "SUM",     tooltip: "Sum of all selected cells" },
-      { label: "AVG",     value: formatNum(s.avg),    op: "AVERAGE", tooltip: "Arithmetic mean" },
-      { label: "MEDIAN",  value: formatNum(s.median), op: "MEDIAN",  tooltip: "Middle value when sorted" },
+      { label: "SUM",     value: `result= ${formatNum(s.sum)}`,    op: "SUM",     tooltip: "Sum of all selected cells" },
+      { label: "AVG",     value: `result= ${formatNum(s.avg)}`,    op: "AVERAGE", tooltip: "Arithmetic mean" },
+      { label: "MEDIAN",  value: `result= ${formatNum(s.median)}`, op: "MEDIAN",  tooltip: "Middle value when sorted" },
     ] : []),
-    { label: "MIN",   value: formatNum(s.min),   op: "MIN",   tooltip: "Smallest value" },
-    { label: "MAX",   value: formatNum(s.max),   op: "MAX",   tooltip: "Largest value" },
-    { label: "COUNT", value: String(s.count),    op: "COUNT", tooltip: "Number of numeric cells" },
+    { label: "MIN",   value: `result= ${formatNum(s.min)}`,   op: "MIN",   tooltip: "Smallest value" },
+    { label: "MAX",   value: `result= ${formatNum(s.max)}`,   op: "MAX",   tooltip: "Largest value" },
+    { label: "COUNT", value: `result= ${String(s.count)}`,    op: "COUNT", tooltip: "Number of numeric cells" },
     ...(!isSingle ? [
-      { label: "PRODUCT", value: formatNum(s.product), op: "PRODUCT", tooltip: "Product of all selected cells" },
+      { label: "PRODUCT", value: `result= ${formatNum(s.product)}`, op: "PRODUCT", tooltip: "Product of all selected cells" },
     ] : []),
   ];
 
   const statistics: StatEntry[] = isSingle ? [
-    { label: "SQRT",  value: s.firstNum >= 0 ? formatNum(Math.sqrt(s.firstNum))  : "#NUM!", op: "SQRT",  tooltip: "Square root" },
-    { label: "ABS",   value: formatNum(Math.abs(s.firstNum)),                               op: "ABS",   tooltip: "Absolute value" },
-    { label: "SIGN",  value: String(Math.sign(s.firstNum)),                                 op: "SIGN",  tooltip: "Sign: −1, 0, or 1" },
+    { label: "SQRT",  value: s.firstNum >= 0 ? `result= ${formatNum(Math.sqrt(s.firstNum))}` : "#NUM!", op: "SQRT",  tooltip: "Square root" },
+    { label: "ABS",   value: `result= ${formatNum(Math.abs(s.firstNum))}`,                              op: "ABS",   tooltip: "Absolute value" },
+    { label: "SIGN",  value: `result= ${String(Math.sign(s.firstNum))}`,                                op: "SIGN",  tooltip: "Sign: −1, 0, or 1" },
   ] : [
-    { label: "STDEV", value: isNaN(s.stdev)    ? "—" : formatNum(s.stdev),    op: "STDEV", tooltip: "Sample standard deviation" },
-    { label: "VAR",   value: isNaN(s.variance) ? "—" : formatNum(s.variance), op: "VAR",   tooltip: "Sample variance" },
-    { label: "SQRT",  value: formatNum(Math.sqrt(Math.abs(s.sum))),                         op: "SQRT",  tooltip: "√ of the sum" },
+    { label: "STDEV", value: isNaN(s.stdev)    ? "—" : `result= ${formatNum(s.stdev)}`,    op: "STDEV", tooltip: "Sample standard deviation" },
+    { label: "VAR",   value: isNaN(s.variance) ? "—" : `result= ${formatNum(s.variance)}`, op: "VAR",   tooltip: "Sample variance" },
+    { label: "SQRT",  value: `result= ${formatNum(Math.sqrt(Math.abs(s.sum)))}`,            op: "SQRT",  tooltip: "√ of the sum" },
   ];
 
   const math: StatEntry[] = isSingle ? [
-    { label: "SQRT",   value: s.firstNum >= 0 ? formatNum(Math.sqrt(s.firstNum))  : "#NUM!", op: "SQRT",   tooltip: "Square root of this cell" },
-    { label: "ABS",    value: formatNum(Math.abs(s.firstNum)),                               op: "ABS",    tooltip: "Absolute value" },
-    { label: "ROUND",  value: String(Math.round(s.firstNum)),                                op: "ROUND",  tooltip: "Round to nearest integer" },
-    { label: "INT",    value: String(Math.floor(s.firstNum)),                                op: "INT",    tooltip: "Floor (round down)" },
-    { label: "SIGN",   value: String(Math.sign(s.firstNum)),                                 op: "SIGN",   tooltip: "Sign: −1, 0, or 1" },
-    { label: "LOG10",  value: s.firstNum > 0 ? formatNum(Math.log10(s.firstNum)) : "#NUM!",  op: "LOG10",  tooltip: "Base-10 logarithm" },
-    { label: "LN",     value: s.firstNum > 0 ? formatNum(Math.log(s.firstNum))   : "#NUM!",  op: "LN",     tooltip: "Natural logarithm" },
-    { label: "EXP",    value: formatNum(Math.exp(s.firstNum)),                               op: "EXP",    tooltip: "eˣ where x = this cell" },
+    { label: "SQRT",   value: s.firstNum >= 0 ? `result= ${formatNum(Math.sqrt(s.firstNum))}` : "#NUM!", op: "SQRT",   tooltip: "Square root of this cell" },
+    { label: "ABS",    value: `result= ${formatNum(Math.abs(s.firstNum))}`,                              op: "ABS",    tooltip: "Absolute value" },
+    { label: "ROUND",  value: `result= ${String(Math.round(s.firstNum))}`,                               op: "ROUND",  tooltip: "Round to nearest integer" },
+    { label: "INT",    value: `result= ${String(Math.floor(s.firstNum))}`,                               op: "INT",    tooltip: "Floor (round down)" },
+    { label: "SIGN",   value: `result= ${String(Math.sign(s.firstNum))}`,                                op: "SIGN",   tooltip: "Sign: −1, 0, or 1" },
+    { label: "LOG10",  value: s.firstNum > 0 ? `result= ${formatNum(Math.log10(s.firstNum))}` : "#NUM!", op: "LOG10",  tooltip: "Base-10 logarithm" },
+    { label: "LN",     value: s.firstNum > 0 ? `result= ${formatNum(Math.log(s.firstNum))}` : "#NUM!",   op: "LN",     tooltip: "Natural logarithm" },
+    { label: "EXP",    value: `result= ${formatNum(Math.exp(s.firstNum))}`,                              op: "EXP",    tooltip: "eˣ where x = this cell" },
   ] : [
-    { label: "SQRT",      value: `√(${formatNum(s.sum)})`,                        op: "SQRT",      tooltip: "Insert SQRT per column below selection" },
-    { label: "ABS",       value: `|${formatNum(s.min)}| … |${formatNum(s.max)}|`, op: "ABS",       tooltip: "Insert ABS per column below selection" },
-    { label: "ROUND",     value: `ROUND(SUM, 0) = ${String(Math.round(s.sum))}`,  op: "ROUND",     tooltip: "Insert ROUND per column below selection" },
-    { label: "ROUNDUP",   value: `↑ ${String(Math.ceil(s.avg))} (avg)`,           op: "ROUNDUP",   tooltip: "Insert ROUNDUP per column" },
-    { label: "ROUNDDOWN", value: `↓ ${String(Math.floor(s.avg))} (avg)`,          op: "ROUNDDOWN", tooltip: "Insert ROUNDDOWN per column" },
-    { label: "INT",       value: `INT(avg) = ${String(Math.floor(s.avg))}`,        op: "INT",       tooltip: "Insert INT per column" },
-    { label: "PRODUCT",   value: formatNum(s.product),                             op: "PRODUCT",   tooltip: "Insert PRODUCT of each column" },
-    { label: "LOG10",     value: s.sum > 0 ? `log(${formatNum(s.sum)})` : "#NUM!", op: "LOG10",     tooltip: "Insert LOG10 per column" },
+    { label: "SQRT",      value: `result= √(${formatNum(s.sum)})`,                        op: "SQRT",      tooltip: "Insert SQRT per column below selection" },
+    { label: "ABS",       value: `result= |${formatNum(s.min)}| … |${formatNum(s.max)}|`, op: "ABS",       tooltip: "Insert ABS per column below selection" },
+    { label: "ROUND",     value: `result= ${String(Math.round(s.sum))} (sum,0)`,          op: "ROUND",     tooltip: "Insert ROUND per column below selection" },
+    { label: "ROUNDUP",   value: `result= ↑ ${String(Math.ceil(s.avg))} (avg)`,           op: "ROUNDUP",   tooltip: "Insert ROUNDUP per column" },
+    { label: "ROUNDDOWN", value: `result= ↓ ${String(Math.floor(s.avg))} (avg)`,          op: "ROUNDDOWN", tooltip: "Insert ROUNDDOWN per column" },
+    { label: "INT",       value: `result= ${String(Math.floor(s.avg))} (avg)`,            op: "INT",       tooltip: "Insert INT per column" },
+    { label: "PRODUCT",   value: `result= ${formatNum(s.product)}`,                       op: "PRODUCT",   tooltip: "Insert PRODUCT of each column" },
+    { label: "LOG10",     value: s.sum > 0 ? `result= log(${formatNum(s.sum)})` : "#NUM!", op: "LOG10",    tooltip: "Insert LOG10 per column" },
   ];
 
   return { Aggregates: aggregates, Statistics: statistics, Math: math };
@@ -144,6 +141,7 @@ function StatsPopup({ selectedCells, cells, popupPos, onInsert, onClose }: Stats
   const nums = extractNums(selectedCells, cells);
   const [activeCategory, setActiveCategory] = useState<string>("Aggregates");
 
+  // Close on any outside click — no stopPropagation so the overlay click always fires
   useEffect(() => {
     if (!popupPos) return;
     function handleOutside(e: globalThis.MouseEvent) {
@@ -151,8 +149,9 @@ function StatsPopup({ selectedCells, cells, popupPos, onInsert, onClose }: Stats
         onClose();
       }
     }
-    const timer = setTimeout(() => window.addEventListener("mousedown", handleOutside), 50);
-    return () => { clearTimeout(timer); window.removeEventListener("mousedown", handleOutside); };
+    // Use capture phase so it fires before cell mousedown handlers
+    window.addEventListener("mousedown", handleOutside, true);
+    return () => window.removeEventListener("mousedown", handleOutside, true);
   }, [popupPos, onClose]);
 
   if (nums.length === 0 || !popupPos) return null;
@@ -169,6 +168,7 @@ function StatsPopup({ selectedCells, cells, popupPos, onInsert, onClose }: Stats
   return (
     <div
       ref={popupRef}
+      // Stop mousedown inside the popup from bubbling to the window handler
       onMouseDown={(e) => e.stopPropagation()}
       style={{
         position: "fixed", left: clampedX, top: clampedY, zIndex: 9999,
@@ -209,7 +209,7 @@ function StatsPopup({ selectedCells, cells, popupPos, onInsert, onClose }: Stats
             <span style={{ fontSize: 10, fontWeight: 700, color: "#1a73e8", background: "#e8f0fe", borderRadius: 4, padding: "2px 5px", minWidth: 52, textAlign: "center", letterSpacing: "0.02em" }}>
               {label}
             </span>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: value.startsWith("#") ? "#dc2626" : "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: value.startsWith("#") ? "#dc2626" : value.startsWith("result=") ? "#059669" : "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
               {value}
             </span>
             <span style={{ fontSize: 10, color: "#d1d5db" }} title="Insert formula below selection">↓</span>
@@ -279,13 +279,11 @@ function CellContextMenu({ contextMenu, cells, onInsert, onClose, onOpenStats, o
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
     }
     function handleEsc(e: globalThis.KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    const timer = setTimeout(() => {
-      window.addEventListener("mousedown", handleOutside);
-      window.addEventListener("keydown", handleEsc);
-    }, 50);
+    // Use capture phase — fires before any cell mousedown, no delay needed
+    window.addEventListener("mousedown", handleOutside, true);
+    window.addEventListener("keydown", handleEsc);
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("mousedown", handleOutside, true);
       window.removeEventListener("keydown", handleEsc);
     };
   }, [contextMenu, onClose]);
@@ -313,26 +311,30 @@ function CellContextMenu({ contextMenu, cells, onInsert, onClose, onOpenStats, o
     { type: "item", icon: "✏️", label: "Edit cell",   action: () => onEdit(cellId) },
     { type: "item", icon: "🗑️", label: "Clear cell",  action: () => onClear(cellId), danger: true },
     { type: "section", label: "Single-cell functions" },
-    { type: "item", icon: "√",  label: "SQRT",  hint: hasNum ? (num >= 0 ? `= ${parseFloat(Math.sqrt(num).toFixed(6))}` : "#NUM!") : "—", action: () => { onInsert("SQRT");  onClose(); }, disabled: !hasNum || num < 0 },
-    { type: "item", icon: "|x|",label: "ABS",   hint: hasNum ? `= ${Math.abs(num)}` : "—",  action: () => { onInsert("ABS");   onClose(); }, disabled: !hasNum },
-    { type: "item", icon: "⌊⌉", label: "ROUND", hint: hasNum ? `= ${Math.round(num)}` : "—", action: () => { onInsert("ROUND"); onClose(); }, disabled: !hasNum },
-    { type: "item", icon: "⌊⌋", label: "INT",   hint: hasNum ? `= ${Math.floor(num)}` : "—", action: () => { onInsert("INT");   onClose(); }, disabled: !hasNum },
-    { type: "item", icon: "±",  label: "SIGN",  hint: hasNum ? `= ${Math.sign(num)}` : "—",  action: () => { onInsert("SIGN");  onClose(); }, disabled: !hasNum },
-    { type: "item", icon: "㏒", label: "LOG10", hint: hasNum && num > 0 ? `= ${parseFloat(Math.log10(num).toFixed(6))}` : "#NUM!", action: () => { onInsert("LOG10"); onClose(); }, disabled: !hasNum || num <= 0 },
-    { type: "item", icon: "㏑", label: "LN",    hint: hasNum && num > 0 ? `= ${parseFloat(Math.log(num).toFixed(6))}` : "#NUM!",  action: () => { onInsert("LN");    onClose(); }, disabled: !hasNum || num <= 0 },
-    { type: "item", icon: "eˣ", label: "EXP",   hint: hasNum ? `= ${parseFloat(Math.exp(num).toFixed(4))}` : "—",                action: () => { onInsert("EXP");   onClose(); }, disabled: !hasNum },
+    { type: "item", icon: "√",  label: "SQRT",  hint: hasNum ? (num >= 0 ? `result= ${parseFloat(Math.sqrt(num).toFixed(6))}` : "#NUM!") : "—", action: () => { onInsert("SQRT");  onClose(); }, disabled: !hasNum || num < 0 },
+    { type: "item", icon: "|x|",label: "ABS",   hint: hasNum ? `result= ${Math.abs(num)}` : "—",  action: () => { onInsert("ABS");   onClose(); }, disabled: !hasNum },
+    { type: "item", icon: "⌊⌉", label: "ROUND", hint: hasNum ? `result= ${Math.round(num)}` : "—", action: () => { onInsert("ROUND"); onClose(); }, disabled: !hasNum },
+    { type: "item", icon: "⌊⌋", label: "INT",   hint: hasNum ? `result= ${Math.floor(num)}` : "—", action: () => { onInsert("INT");   onClose(); }, disabled: !hasNum },
+    { type: "item", icon: "±",  label: "SIGN",  hint: hasNum ? `result= ${Math.sign(num)}` : "—",  action: () => { onInsert("SIGN");  onClose(); }, disabled: !hasNum },
+    { type: "item", icon: "㏒", label: "LOG10", hint: hasNum && num > 0 ? `result= ${parseFloat(Math.log10(num).toFixed(6))}` : "#NUM!", action: () => { onInsert("LOG10"); onClose(); }, disabled: !hasNum || num <= 0 },
+    { type: "item", icon: "㏑", label: "LN",    hint: hasNum && num > 0 ? `result= ${parseFloat(Math.log(num).toFixed(6))}` : "#NUM!",  action: () => { onInsert("LN");    onClose(); }, disabled: !hasNum || num <= 0 },
+    { type: "item", icon: "eˣ", label: "EXP",   hint: hasNum ? `result= ${parseFloat(Math.exp(num).toFixed(4))}` : "—",                action: () => { onInsert("EXP");   onClose(); }, disabled: !hasNum },
     { type: "section", label: "View stats" },
     { type: "item", icon: "📊", label: "Open stats popup", action: () => onOpenStats(cellId, cx + menuW + 8, cy), disabled: !hasNum },
   ];
 
   return (
-    <div ref={menuRef} onMouseDown={(e) => e.stopPropagation()} style={{
-      position: "fixed", left: cx, top: cy, zIndex: 99999,
-      background: "#fff", border: "1px solid #e2e4e9", borderRadius: 10,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-      minWidth: menuW, overflow: "hidden",
-      fontFamily: "system-ui, -apple-system, sans-serif", userSelect: "none",
-    }}>
+    <div
+      ref={menuRef}
+      // Prevent clicks inside the menu from reaching the capture-phase outside handler
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{
+        position: "fixed", left: cx, top: cy, zIndex: 99999,
+        background: "#fff", border: "1px solid #e2e4e9", borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+        minWidth: menuW, overflow: "hidden",
+        fontFamily: "system-ui, -apple-system, sans-serif", userSelect: "none",
+      }}>
       {sections.map((s, i) => {
         if (s.type === "section") {
           return (
@@ -356,7 +358,16 @@ function CellContextMenu({ contextMenu, cells, onInsert, onClose, onOpenStats, o
           >
             <span style={{ fontSize: 13, width: 20, textAlign: "center", flexShrink: 0 }}>{s.icon}</span>
             <span style={{ fontSize: 13, fontWeight: 500, color: s.danger ? "#dc2626" : "#1a1a1a", flex: 1 }}>{s.label}</span>
-            {s.hint && <span style={{ fontSize: 11, color: s.hint.startsWith("#") ? "#dc2626" : "#6b7280", fontVariantNumeric: "tabular-nums" }}>{s.hint}</span>}
+            {s.hint && (
+              <span style={{
+                fontSize: 11,
+                color: s.hint.startsWith("#") ? "#dc2626" : "#059669",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 600,
+              }}>
+                {s.hint}
+              </span>
+            )}
           </div>
         );
       })}
@@ -370,9 +381,17 @@ export function SpreadsheetGrid() {
   const {
     cells, activeCell, editingCell, editValue, selection,
     colWidths, rowHeights, colOrder, presenceUsers,
+    lastUsedColor, lastUsedBgColor,
     setActiveCell, startEdit, commitEdit, cancelEdit, setEditValue,
     moveActive, extendSelection, setColWidth, setRowHeight, setColOrder,
   } = useEditorStore();
+
+  function ensureColorPersistent(format: CellFormat | undefined) {
+    const next = { ...format };
+    if (!next.color) next.color = lastUsedColor;
+    if (!next.bgColor && lastUsedBgColor) next.bgColor = lastUsedBgColor;
+    return next;
+  }
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -420,10 +439,26 @@ export function SpreadsheetGrid() {
     if (singleCellOps.has(op) && allSelectedCells.length === 1) {
       const addr = cellIdToAddress(allSelectedCells[0]);
       const targetCellId = addressToCellId(addr.col, addr.row + 1);
-      const srcLabel = `${colLabel(addr.col)}${addr.row + 1}`;
-      const formula = op === "ROUND" ? `=${op}(${srcLabel},0)` : `=${op}(${srcLabel})`;
-      dispatchCellWrite(targetCellId, { raw: formula, computed: formula, format: { color: DEFAULT_TEXT_COLOR } });
-      useEditorStore.getState().startEdit(targetCellId, formula);
+      // Compute the actual numeric result to show "result= X" in the cell
+      const srcCell = useEditorStore.getState().cells[allSelectedCells[0]];
+      const srcVal = parseFloat(String(srcCell?.computed ?? srcCell?.raw ?? "0").replace(/,/g, ""));
+      let computedResult = "result= ?";
+      if (!isNaN(srcVal)) {
+        let raw: number | string = srcVal;
+        if (op === "SQRT") raw = srcVal >= 0 ? Math.sqrt(srcVal) : "#NUM!";
+        else if (op === "ABS") raw = Math.abs(srcVal);
+        else if (op === "ROUND") raw = Math.round(srcVal);
+        else if (op === "INT") raw = Math.floor(srcVal);
+        else if (op === "SIGN") raw = Math.sign(srcVal);
+        else if (op === "LOG10") raw = srcVal > 0 ? Math.log10(srcVal) : "#NUM!";
+        else if (op === "LN") raw = srcVal > 0 ? Math.log(srcVal) : "#NUM!";
+        else if (op === "EXP") raw = Math.exp(srcVal);
+        computedResult = typeof raw === "number"
+          ? `result= ${parseFloat(raw.toFixed(6))}`
+          : String(raw);
+      }
+      dispatchCellWrite(targetCellId, { raw: computedResult, computed: computedResult, format: { color: "#059669" } });
+      useEditorStore.getState().startEdit(targetCellId, computedResult);
       useEditorStore.getState().commitEdit();
       setPopupPos(null);
       return;
@@ -447,8 +482,39 @@ export function SpreadsheetGrid() {
       const rangeStart = `${colLabel(col)}${colMinRow + 1}`;
       const rangeEnd = `${colLabel(col)}${colMaxRow + 1}`;
       const formula = `=${op}(${rangeStart}:${rangeEnd})`;
-      dispatchCellWrite(targetCellId, { raw: formula, computed: formula, format: { color: DEFAULT_TEXT_COLOR } });
-      useEditorStore.getState().startEdit(targetCellId, formula);
+      // Gather nums in this column to compute result= display
+      const colNums = allSelectedCells
+        .filter((id) => cellIdToAddress(id).col === col)
+        .map((id) => {
+          const c = useEditorStore.getState().cells[id];
+          return parseFloat(String(c?.computed ?? c?.raw ?? "").replace(/,/g, ""));
+        })
+        .filter((n) => !isNaN(n) && isFinite(n));
+      let computedResult = formula;
+      if (colNums.length > 0) {
+        const sum = colNums.reduce((a, b) => a + b, 0);
+        const avg = sum / colNums.length;
+        let raw: number | string = sum;
+        if (op === "SUM") raw = sum;
+        else if (op === "AVERAGE") raw = avg;
+        else if (op === "MEDIAN") { const s = [...colNums].sort((a,b)=>a-b); const m = Math.floor(s.length/2); raw = s.length%2!==0?s[m]:(s[m-1]+s[m])/2; }
+        else if (op === "MIN") raw = Math.min(...colNums);
+        else if (op === "MAX") raw = Math.max(...colNums);
+        else if (op === "COUNT") raw = colNums.length;
+        else if (op === "PRODUCT") raw = colNums.reduce((a,b)=>a*b,1);
+        else if (op === "STDEV") { const mean=avg; const v=colNums.reduce((s,n)=>s+(n-mean)**2,0)/(colNums.length-1); raw=Math.sqrt(v); }
+        else if (op === "SQRT") raw = sum >= 0 ? Math.sqrt(sum) : "#NUM!";
+        else if (op === "ROUND") raw = Math.round(sum);
+        else if (op === "ROUNDUP") raw = Math.ceil(avg);
+        else if (op === "ROUNDDOWN") raw = Math.floor(avg);
+        else if (op === "INT") raw = Math.floor(avg);
+        else if (op === "LOG10") raw = sum > 0 ? Math.log10(sum) : "#NUM!";
+        computedResult = typeof raw === "number"
+          ? `result= ${parseFloat(raw.toFixed(6))}`
+          : String(raw);
+      }
+      dispatchCellWrite(targetCellId, { raw: computedResult, computed: computedResult, format: { color: "#059669" } });
+      useEditorStore.getState().startEdit(targetCellId, computedResult);
       useEditorStore.getState().commitEdit();
     }
     setPopupPos(null);
@@ -506,7 +572,8 @@ export function SpreadsheetGrid() {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const next = new Set(multiSelected);
-      next.has(cellId) ? next.delete(cellId) : next.add(cellId);
+      if (next.has(cellId)) next.delete(cellId);
+      else next.add(cellId);
       setMultiSelected(next);
       setTimeout(() => setPopupPos({ x: e.clientX + 12, y: e.clientY - 20 }), 0);
       return;
@@ -517,7 +584,7 @@ export function SpreadsheetGrid() {
     setPopupPos(null);
     if (editingCell) {
       const result = commitEdit();
-      if (result) dispatchCellWrite(result.cellId, { ...result.data, format: ensureColor(result.data.format) });
+      if (result) dispatchCellWrite(result.cellId, { ...result.data, format: ensureColorPersistent(result.data.format) });
     }
     setActiveCell(cellId);
     const { col, row } = cellIdToAddress(cellId);
@@ -561,21 +628,29 @@ export function SpreadsheetGrid() {
       if (e.key === "Enter") {
         e.preventDefault();
         const r = commitEdit();
-        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColor(r.data.format) });
+        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColorPersistent(r.data.format) });
         moveActive(1, 0); containerRef.current?.focus(); return;
       }
       if (e.key === "Tab") {
         e.preventDefault();
         const r = commitEdit();
-        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColor(r.data.format) });
+        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColorPersistent(r.data.format) });
         moveActive(0, e.shiftKey ? -1 : 1); containerRef.current?.focus(); return;
       }
       return;
     }
     if (!active) return;
     switch (e.key) {
-      case "ArrowUp":    e.preventDefault(); e.shiftKey ? extendSelection({ col: cellIdToAddress(active).col, row: cellIdToAddress(active).row - 1 }) : moveActive(-1, 0); break;
-      case "ArrowDown":  e.preventDefault(); e.shiftKey ? extendSelection({ col: cellIdToAddress(active).col, row: cellIdToAddress(active).row + 1 }) : moveActive(1, 0);  break;
+      case "ArrowUp":
+        e.preventDefault();
+        if (e.shiftKey) extendSelection({ col: cellIdToAddress(active).col, row: cellIdToAddress(active).row - 1 });
+        else moveActive(-1, 0);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        if (e.shiftKey) extendSelection({ col: cellIdToAddress(active).col, row: cellIdToAddress(active).row + 1 });
+        else moveActive(1, 0);
+        break;
       case "ArrowLeft":  e.preventDefault(); moveActive(0, -1); break;
       case "ArrowRight": e.preventDefault(); moveActive(0, 1);  break;
       case "Tab":        e.preventDefault(); moveActive(0, e.shiftKey ? -1 : 1); break;
@@ -593,8 +668,16 @@ export function SpreadsheetGrid() {
         cancelEdit(); setMultiSelected(new Set()); setPopupPos(null); break;
       default:
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
           startEdit(active, e.key);
-          setTimeout(() => inputRef.current?.focus(), 0);
+          setTimeout(() => {
+            const input = inputRef.current;
+            if (input) {
+              input.focus();
+              // Place cursor at end — value already seeded by startEdit
+              input.setSelectionRange(input.value.length, input.value.length);
+            }
+          }, 0);
         }
     }
   }
@@ -657,7 +740,8 @@ export function SpreadsheetGrid() {
                 colIndex <= Math.max(sel.start.col, sel.end.col) &&
                 rowIdx >= Math.min(sel.start.row, sel.end.row) &&
                 rowIdx <= Math.max(sel.start.row, sel.end.row);
-              const isSelected = isMultiSelected || (inDragSelection && !isActive);
+              const inAnySelection = inDragSelection || isMultiSelected;
+              const isSelected = inAnySelection && !isEditing;
               const fmt = cell?.format;
 
               return (
@@ -668,13 +752,26 @@ export function SpreadsheetGrid() {
                     fontWeight: fmt?.bold ? "bold" : undefined,
                     fontStyle: fmt?.italic ? "italic" : undefined,
                     textDecoration: fmt?.underline ? "underline" : undefined,
-                    color: fmt?.color ?? DEFAULT_TEXT_COLOR,
-                    backgroundColor: isMultiSelected ? "rgba(26,115,232,0.12)" : fmt?.bgColor ?? undefined,
+                    color: fmt?.color ?? lastUsedColor,
+                    backgroundColor: fmt?.bgColor ?? lastUsedBgColor,
+                    backgroundImage: isMultiSelected
+                      ? "linear-gradient(rgba(26,115,232,0.18), rgba(26,115,232,0.18))"
+                      : isActive && inDragSelection
+                      ? "linear-gradient(rgba(26,115,232,0.22), rgba(26,115,232,0.22))"
+                      : isSelected
+                      ? "linear-gradient(rgba(26,115,232,0.10), rgba(26,115,232,0.10))"
+                      : undefined,
                     textAlign: fmt?.align ?? "left",
                     fontSize: fmt?.fontSize ? `${fmt.fontSize}px` : undefined,
                     cursor: "cell",
-                    outline: isMultiSelected ? "2px solid #1a73e8" : undefined,
-                    outlineOffset: isMultiSelected ? "-2px" : undefined,
+                    outline: isMultiSelected
+                      ? "2px solid #1a73e8"
+                      : isActive
+                      ? "2px solid #1a73e8"
+                      : isSelected
+                      ? "1px solid rgba(26,115,232,0.4)"
+                      : undefined,
+                    outlineOffset: isMultiSelected ? "-2px" : isActive ? "-2px" : isSelected ? "-1px" : undefined,
                   }}
                   onMouseDown={(e) => handleCellMouseDown(e, cellId)}
                   onMouseEnter={(e) => handleCellMouseEnter(e, cellId)}
@@ -689,13 +786,13 @@ export function SpreadsheetGrid() {
                         setEditValue(v);
                         if (activeCell) {
                           const existing = useEditorStore.getState().cells[activeCell];
-                          dispatchCellWrite(activeCell, { raw: v, computed: v, format: ensureColor(existing?.format) });
+                          dispatchCellWrite(activeCell, { raw: v, computed: v, format: ensureColorPersistent(existing?.format) });
                         }
                       }}
                       autoFocus spellCheck={false}
                       onBlur={() => {
                         const r = commitEdit();
-                        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColor(r.data.format) });
+                        if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColorPersistent(r.data.format) });
                       }}
                       onKeyDown={(e) => {
                         e.stopPropagation();
@@ -703,12 +800,12 @@ export function SpreadsheetGrid() {
                         else if (e.key === "Enter") {
                           e.preventDefault();
                           const r = commitEdit();
-                          if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColor(r.data.format) });
+                          if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColorPersistent(r.data.format) });
                           moveActive(1, 0); containerRef.current?.focus();
                         } else if (e.key === "Tab") {
                           e.preventDefault();
                           const r = commitEdit();
-                          if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColor(r.data.format) });
+                          if (r) dispatchCellWrite(r.cellId, { ...r.data, format: ensureColorPersistent(r.data.format) });
                           moveActive(0, e.shiftKey ? -1 : 1); containerRef.current?.focus();
                         }
                       }}

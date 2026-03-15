@@ -24,8 +24,10 @@ export function joinDocument(
   const data = {
     uid: user.uid,
     displayName: user.displayName,
+    nickname: user.nickname ?? null,
     color: user.color,
     focusedCell: user.focusedCell ?? null,
+    typingTarget: user.typingTarget ?? null,
     lastSeen: Date.now(),
   };
 
@@ -54,6 +56,17 @@ export function updateFocusedCell(
   ).catch(console.error);
 }
 
+export function updateTypingStatus(
+  docId: string,
+  uid: string,
+  target: string | null
+): void {
+  set(
+    ref(rtdb, `${PRESENCE_ROOT}/${docId}/${uid}/typingTarget`),
+    target
+  ).catch(console.error);
+}
+
 // ─── Subscribe to presence ────────────────────────────────────────────────────
 
 export function subscribePresence(
@@ -73,8 +86,10 @@ export function subscribePresence(
           users.push({
             uid: data.uid,
             displayName: data.displayName,
+            nickname: data.nickname ?? undefined,
             color: data.color,
             focusedCell: data.focusedCell ?? undefined,
+            typingTarget: data.typingTarget ?? null,
             lastSeen: data.lastSeen,
           });
         }

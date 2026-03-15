@@ -44,11 +44,25 @@ export type SheetDocument = {
   colOrder?: number[];
   /** Ordered row indices */
   rowOrder?: number[];
+  /** Users who have any form of access or pending invite */
+  participants: string[];
+  /** Users who have been invited but haven't accepted */
+  invitedUsers: string[];
+  /** Users who have accepted the invite and can edit */
+  acceptedUsers: string[];
 };
 
 export type DocumentMeta = Pick<
   SheetDocument,
-  "id" | "title" | "ownerId" | "ownerName" | "createdAt" | "updatedAt"
+  | "id"
+  | "title"
+  | "ownerId"
+  | "ownerName"
+  | "createdAt"
+  | "updatedAt"
+  | "participants"
+  | "invitedUsers"
+  | "acceptedUsers"
 >;
 
 // ─── Presence / Users ────────────────────────────────────────────────────────
@@ -77,11 +91,14 @@ export const USER_COLORS: UserColor[] = [
 export type PresenceUser = {
   uid: string;
   displayName: string;
+  nickname?: string;
   color: UserColor;
   /** Currently focused cell */
   focusedCell?: CellId;
   /** Timestamp of last heartbeat */
   lastSeen: number;
+  /** ID of the user or 'group' being typed in */
+  typingTarget?: string | null;
 };
 
 // ─── Real-time Operations (OT-lite) ─────────────────────────────────────────
@@ -148,6 +165,8 @@ export type AppUser = {
   color: UserColor;
   /** true = signed in with Google, false = anonymous with chosen display name */
   isAnonymous: boolean;
+  /** Optional nickname set by user after Google sign-in, persisted in Firestore */
+  nickname?: string;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────

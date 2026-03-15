@@ -16,6 +16,7 @@ export function usePresence(docId: string): void {
     const leave = joinDocument(docId, {
       uid: user.uid,
       displayName: user.displayName,
+      nickname: user.nickname,
       color: user.color,
       lastSeen: Date.now(),
     });

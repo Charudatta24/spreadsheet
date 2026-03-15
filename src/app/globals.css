@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 :root {
   --sheet-bg: #f8f9fa;
@@ -16,6 +16,11 @@
   --sheet-cell-selected: #e8f0fe;
   --sheet-cell-active: #e8f0fe;
   --col-resize-handle: 4px;
+
+  /* RGB variants for opacity */
+  --sheet-bg-rgb: 248, 249, 250;
+  --sheet-surface-rgb: 255, 255, 255;
+  --sheet-accent-rgb: 26, 115, 232;
 }
 
 * {
@@ -101,10 +106,9 @@ body {
   font-size: 13px;
   font-family: inherit;
   color: #1a1a1a;
-  width: 200%;
+  width: 100%;
   min-width: 100%;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 2px solid var(--sheet-accent);
 }
 
@@ -270,4 +274,55 @@ body {
 
 .saving-pulse {
   animation: saving-pulse 1s ease-in-out infinite;
+}
+@keyframes grid-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.loading-background {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: var(--sheet-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.reveal-content {
+  animation: reveal-content 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes reveal-content {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.grid-mesh {
+  background-image: 
+    linear-gradient(rgba(var(--sheet-accent-rgb), 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--sheet-accent-rgb), 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  z-index: -1;
+  opacity: 1;
+  animation: grid-scroll 20s linear infinite;
+}
+
+@keyframes grid-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 60px 60px; }
 }

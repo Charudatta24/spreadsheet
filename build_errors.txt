@@ -1,0 +1,35 @@
+
+> collabsheet@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/5) ...
+   Generating static pages (1/5) 
+   Generating static pages (2/5) 
+   Generating static pages (3/5) 
+ ✓ Generating static pages (5/5)
+   Finalizing page optimization ...
+   Collecting build traces ...
+Error: ENOENT: no such file or directory, open 'C:\Users\phani\Desktop\collabsheet\.next\server\app\_not-found\page.js.nft.json'
+    at async open (node:internal/fs/promises:639:25)
+    at async Object.readFile (node:internal/fs/promises:1243:14)
+    at async C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\build\collect-build-traces.js:429:50
+    at async Promise.all (index 0)
+    at async C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\build\collect-build-traces.js:410:13
+    at async Span.traceAsyncFn (C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\trace\trace.js:154:20)
+    at async collectBuildTraces (C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\build\collect-build-traces.js:164:5)
+    at async C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\build\index.js:2127:13
+    at async Span.traceAsyncFn (C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\trace\trace.js:154:20)
+    at async build (C:\Users\phani\Desktop\collabsheet\node_modules\next\dist\build\index.js:366:9) {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\phani\\Desktop\\collabsheet\\.next\\server\\app\\_not-found\\page.js.nft.json'
+}

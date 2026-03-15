@@ -16,7 +16,7 @@ import type { CellId, CellData, SheetDocument } from "@/types";
 
 const DEBOUNCE_MS = 500;
 
-export function useDocumentSync(docId: string): void {
+export function useDocumentSync(docId: string, onDeleted?: () => void): void {
   const {
     setCells,
     applyRemoteCell,
@@ -53,9 +53,9 @@ export function useDocumentSync(docId: string): void {
   useEffect(() => {
     const unsub = subscribeDocument(docId, (meta) => {
       applyRemoteMeta(meta as Partial<SheetDocument>);
-    });
+    }, onDeleted);
     return unsub;
-  }, [docId, applyRemoteMeta]);
+  }, [docId, applyRemoteMeta, onDeleted]);
 
   // ── Real-time cell changes ────────────────────────────────────────────────
   useEffect(() => {

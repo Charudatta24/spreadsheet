@@ -343,7 +343,15 @@ function ColorPicker({ value, onChange, label, title, allowTransparent }: ColorP
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 export function Toolbar() {
-  const { activeCell, cells, applyFormat } = useEditorStore();
+  const { 
+    activeCell, 
+    cells, 
+    applyFormat, 
+    lastUsedColor, 
+    setLastUsedColor, 
+    lastUsedBgColor, 
+    setLastUsedBgColor 
+  } = useEditorStore();
   const { allSelected } = useSelectionStore();
 
   // Format preview reflects the active (focused) cell
@@ -356,16 +364,23 @@ export function Toolbar() {
     const targets = allSelected.length > 0 ? allSelected : activeCell ? [activeCell] : [];
     if (targets.length === 0) return;
 
-    const state = useEditorStore.getState();
     targets.forEach((cellId) => {
       // Apply to Zustand store
       applyFormat(cellId, format);
       // Persist to Firestore via dispatch
+      const state = useEditorStore.getState();
       const cell = state.cells[cellId];
+      const isEditing = state.editingCell === cellId;
+      
+      // Ensure we don't send undefined to Firestore
+      const finalFormat: CellFormat = { ...cell?.format, ...format };
+      if (!finalFormat.color) finalFormat.color = state.lastUsedColor;
+      if (!finalFormat.bgColor && state.lastUsedBgColor) finalFormat.bgColor = state.lastUsedBgColor;
+
       dispatchCellWrite(cellId, {
-        raw:      cell?.raw      ?? "",
-        computed: cell?.computed ?? "",
-        format:   { ...cell?.format, ...format },
+        raw:      isEditing ? state.editValue : (cell?.raw      ?? ""),
+        computed: isEditing ? state.editValue : (cell?.computed ?? ""),
+        format:   finalFormat,
       });
     });
   }
@@ -452,8 +467,12 @@ export function Toolbar() {
 
       {/* Font colour picker */}
       <ColorPicker
-        value={activeFormat.color}
-        onChange={(c) => applyAndWrite({ color: c ?? "#1a1a1a" })}
+        value={activeFormat.color ?? lastUsedColor}
+        onChange={(c) => {
+          const color = c ?? "#1a1a1a";
+          setLastUsedColor(color);
+          applyAndWrite({ color });
+        }}
         label="A"
         title="Font colour"
         allowTransparent={false}
@@ -464,12 +483,15 @@ export function Toolbar() {
 
       {/* Background colour picker */}
       <ColorPicker
-        value={activeFormat.bgColor}
-        onChange={(c) => applyAndWrite({ bgColor: c })}
+        value={activeFormat.bgColor ?? lastUsedBgColor}
+        onChange={(c) => {
+          setLastUsedBgColor(c);
+          applyAndWrite({ bgColor: c });
+        }}
         label={
           <span style={{
             display: "inline-block", width: 14, height: 14, borderRadius: 3,
-            background: activeFormat.bgColor ?? "repeating-linear-gradient(45deg,#d1d5db 0,#d1d5db 2px,#fff 2px,#fff 5px)",
+            background: (activeFormat.bgColor ?? lastUsedBgColor) ?? "repeating-linear-gradient(45deg,#d1d5db 0,#d1d5db 2px,#fff 2px,#fff 5px)",
             border: "1px solid rgba(0,0,0,0.2)",
           }} />
         }

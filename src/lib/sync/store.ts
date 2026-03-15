@@ -20,6 +20,7 @@ import { recomputeGrid, addressToCellId, cellIdToAddress } from "@/lib/formula";
 interface EditorState {
   // Document
   docId: string | null;
+  ownerId: string | null;
   title: string;
   cells: GridData;
   colWidths: ColWidths;
@@ -42,6 +43,10 @@ interface EditorState {
   // Grid dimensions
   numCols: number;
   numRows: number;
+
+  // Formatting Persistence
+  lastUsedColor: string;
+  lastUsedBgColor: string | undefined;
 }
 
 interface EditorActions {
@@ -81,6 +86,10 @@ interface EditorActions {
 
   // Presence
   setPresenceUsers: (users: PresenceUser[]) => void;
+
+  // Formatting Persistence
+  setLastUsedColor: (color: string) => void;
+  setLastUsedBgColor: (color: string | undefined) => void;
 }
 
 // ─── Default dimensions ───────────────────────────────────────────────────────
@@ -96,6 +105,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
   immer((set, get) => ({
     // Initial state
     docId: null,
+    ownerId: null,
     title: "",
     cells: {},
     colWidths: {},
@@ -110,12 +120,15 @@ export const useEditorStore = create<EditorState & EditorActions>()(
     presenceUsers: [],
     numCols: DEFAULT_COLS,
     numRows: DEFAULT_ROWS,
+    lastUsedColor: "#1a1a1a",
+    lastUsedBgColor: undefined,
 
     // ── Document init ────────────────────────────────────────────────────────
 
     loadDocument: (doc) =>
       set((s) => {
         if (doc.id) s.docId = doc.id;
+        if (doc.ownerId) s.ownerId = doc.ownerId;
         if (doc.title != null) s.title = doc.title;
         if (doc.colWidths) s.colWidths = doc.colWidths;
         if (doc.rowHeights) s.rowHeights = doc.rowHeights;
@@ -145,6 +158,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
     applyRemoteMeta: (meta) =>
       set((s) => {
+        if (meta.ownerId) s.ownerId = meta.ownerId;
         if (meta.title != null) s.title = meta.title;
         if (meta.colWidths) s.colWidths = meta.colWidths;
         if (meta.rowHeights) s.rowHeights = meta.rowHeights;
@@ -181,10 +195,16 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       if (!editingCell) return null;
 
       const existing = cells[editingCell];
+      const { lastUsedColor, lastUsedBgColor } = get();
+      
+      const format = { ...existing?.format };
+      if (!format.color) format.color = lastUsedColor;
+      if (!format.bgColor && lastUsedBgColor) format.bgColor = lastUsedBgColor;
+
       const newData: CellData = {
         raw: editValue,
         computed: editValue, // will be recomputed below
-        format: existing?.format,
+        format,
       };
 
       set((s) => {
@@ -304,5 +324,15 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       set((s) => {
         s.presenceUsers = users;
       }),
+
+    setLastUsedColor: (color) =>
+      set((s) => {
+        s.lastUsedColor = color;
+      }),
+
+    setLastUsedBgColor: (color) =>
+      set((s) => {
+        s.lastUsedBgColor = color;
+      }),
   }))
-);
+)

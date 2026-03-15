@@ -10,6 +10,10 @@ import {
 import { auth } from "@/lib/firebase/client";
 import { colorForUid } from "@/lib/sync/authStore";
 import { useAuthStore } from "@/lib/sync/authStore";
+import { LoadingPortal } from "@/components/ui/LoadingPortal";
+import { FluxWorkLogo } from "@/components/ui/FluxWorkLogo";
+import { getUserNickname, setUserProfile } from "@/lib/firebase/firestore";
+import { NicknameModal } from "./NicknameModal";
 import type { AppUser } from "@/types";
 
 const provider = new GoogleAuthProvider();
@@ -18,6 +22,8 @@ export function LoginScreen() {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Stores the partially-built user while waiting for nickname input
+  const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
   const { setUser } = useAuthStore();
 
   async function handleGoogle() {
@@ -26,20 +32,50 @@ export function LoginScreen() {
     try {
       const result = await signInWithPopup(auth, provider);
       const u = result.user;
+      const color = colorForUid(u.uid);
+
+      // Check for a previously saved nickname
+      const savedNickname = await getUserNickname(u.uid);
+
       const user: AppUser = {
         uid: u.uid,
         displayName: u.displayName ?? "User",
         email: u.email,
         photoURL: u.photoURL,
-        color: colorForUid(u.uid),
+        color,
         isAnonymous: false,
+        nickname: savedNickname ?? undefined,
       };
-      setUser(user);
-    } catch (e) {
+
+      if (savedNickname) {
+        // Already has a nickname — proceed directly
+        setUser(user);
+        // Ensure profile is up to date
+        await setUserProfile(user.uid, {
+          displayName: user.displayName,
+          email: user.email,
+          nickname: savedNickname
+        });
+      } else {
+        // First time — ask for a nickname
+        setPendingUser(user);
+      }
+    } catch {
       setError("Google sign-in failed. Try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleNicknameConfirm(nickname: string) {
+    if (!pendingUser) return;
+    await setUserProfile(pendingUser.uid, {
+      displayName: pendingUser.displayName,
+      email: pendingUser.email,
+      nickname
+    });
+    setUser({ ...pendingUser, nickname });
+    setPendingUser(null);
   }
 
   async function handleAnonymous() {
@@ -53,7 +89,7 @@ export function LoginScreen() {
       const result = await signInAnonymously(auth);
       await updateProfile(result.user, { displayName: displayName.trim() });
       if (typeof localStorage !== "undefined") {
-        localStorage.setItem("collabsheet-displayname", displayName.trim());
+        localStorage.setItem("fluxwork-displayname", displayName.trim());
       }
       const user: AppUser = {
         uid: result.user.uid,
@@ -64,7 +100,7 @@ export function LoginScreen() {
         isAnonymous: true,
       };
       setUser(user);
-    } catch (e) {
+    } catch {
       setError("Failed to sign in. Try again.");
     } finally {
       setLoading(false);
@@ -72,70 +108,78 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-sheet-bg">
-      <div className="w-full max-w-sm mx-4">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#4f6ef7" />
-              <rect x="8" y="8" width="7" height="7" rx="1" fill="white" fillOpacity="0.9" />
-              <rect x="17" y="8" width="7" height="7" rx="1" fill="white" fillOpacity="0.6" />
-              <rect x="8" y="17" width="7" height="7" rx="1" fill="white" fillOpacity="0.6" />
-              <rect x="17" y="17" width="7" height="7" rx="1" fill="white" fillOpacity="0.9" />
-            </svg>
-            <span className="text-xl font-bold text-sheet-text tracking-tight">
-              CollabSheet
-            </span>
-          </div>
-          <p className="text-sheet-muted text-sm">
-            Real-time collaborative spreadsheets
-          </p>
-        </div>
+    <>
+      {/* Nickname prompt shown after Google sign-in for first-time users */}
+      {pendingUser && (
+        <NicknameModal onConfirm={handleNicknameConfirm} />
+      )}
 
-        <div className="bg-sheet-surface rounded-xl border border-sheet-border p-6 space-y-4">
-          {/* Google */}
-          <button
-            onClick={handleGoogle}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-white text-gray-800 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
+      {loading && <LoadingPortal fullPage />}
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-sheet-border" />
-            <span className="text-xs text-sheet-muted">or</span>
-            <div className="flex-1 h-px bg-sheet-border" />
-          </div>
+      <div className="flex items-center justify-center h-screen bg-sheet-bg">
+        <div className="w-full max-w-sm mx-4">
+          {/* Logo */}
+            <div className="inline-flex items-center gap-3 mb-3">
+              <FluxWorkLogo size={40} animated />
+              <span className="text-2xl font-black text-sheet-text tracking-tight">
+                FluxWork
+              </span>
+            </div>
+            <p className="text-sheet-muted text-sm">
+              Real-time collaboration for the modern team
+            </p>
 
-          {/* Anonymous */}
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAnonymous()}
-              placeholder="Display name"
-              maxLength={32}
-              className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-sheet-accent transition-colors"
-            />
+          <div className="bg-sheet-surface rounded-xl border border-sheet-border p-6 space-y-4">
+            {/* Google */}
             <button
-              onClick={handleAnonymous}
+              onClick={handleGoogle}
               disabled={loading}
-              className="w-full px-4 py-2.5 rounded-lg bg-sheet-accent text-white font-medium text-sm hover:bg-sheet-accent-dim transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-white text-gray-800 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
-              {loading ? "Signing in…" : "Join as Guest"}
+              <GoogleIcon />
+              Continue with Google
             </button>
-          </div>
 
-          {error && (
-            <p className="text-red-400 text-xs text-center">{error}</p>
-          )}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-sheet-border" />
+              <span className="text-xs text-sheet-muted">or</span>
+              <div className="flex-1 h-px bg-sheet-border" />
+            </div>
+
+            {/* Anonymous */}
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAnonymous()}
+                placeholder="Display name"
+                maxLength={32}
+                className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-sheet-accent transition-colors"
+              />
+              <button
+                onClick={handleAnonymous}
+                disabled={loading}
+                className="w-full px-4 py-2.5 rounded-lg bg-sheet-accent text-white font-medium text-sm hover:bg-sheet-accent-dim transition-colors disabled:opacity-50 relative overflow-hidden"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    <span>Signing in…</span>
+                  </div>
+                ) : (
+                  "Join as Guest"
+                )}
+              </button>
+            </div>
+
+            {error && (
+              <p className="text-red-400 text-xs text-center">{error}</p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

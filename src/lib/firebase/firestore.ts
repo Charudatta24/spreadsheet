@@ -7,15 +7,20 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  orderBy,
   serverTimestamp,
   onSnapshot,
   Unsubscribe,
   Timestamp,
   writeBatch,
   limit,
+  where,
+  arrayUnion,
+  arrayRemove,
+  addDoc,
+  orderBy,
 } from "firebase/firestore";
-import { db } from "./client";
+import { ref, remove } from "firebase/database";
+import { db, rtdb } from "./client";
 import type {
   SheetDocument,
   DocumentMeta,
@@ -34,7 +39,8 @@ const CELLS_SUBCOLLECTION = "cells";
 export async function createDocument(
   ownerId: string,
   ownerName: string,
-  title = "Untitled Spreadsheet"
+  title = "Untitled Spreadsheet",
+  invitedUserIds: string[] = []
 ): Promise<SheetDocument> {
   const id = nanoid(12);
   const now = Date.now();
@@ -45,6 +51,9 @@ export async function createDocument(
     ownerName,
     createdAt: now,
     updatedAt: now,
+    participants: [ownerId, ...invitedUserIds],
+    invitedUsers: invitedUserIds,
+    acceptedUsers: [ownerId],
     cells: {},
     colWidths: {},
     rowHeights: {},
@@ -61,6 +70,9 @@ export async function createDocument(
     colWidths: {},
     rowHeights: {},
     colOrder: docData.colOrder,
+    participants: docData.participants,
+    invitedUsers: docData.invitedUsers,
+    acceptedUsers: docData.acceptedUsers,
   });
 
   return docData;
@@ -85,20 +97,23 @@ export async function getDocumentMeta(
       data.updatedAt instanceof Timestamp
         ? data.updatedAt.toMillis()
         : data.updatedAt,
+    participants: data.participants ?? [data.ownerId],
+    invitedUsers: data.invitedUsers ?? [],
+    acceptedUsers: data.acceptedUsers ?? [data.ownerId],
   };
 }
 
 // Prefix with _ to indicate intentionally unused parameter
 export async function listDocuments(
-  _userId: string
+  userId: string
 ): Promise<DocumentMeta[]> {
   const q = query(
     collection(db, DOCS_COLLECTION),
-    orderBy("updatedAt", "desc"),
+    where("participants", "array-contains", userId),
     limit(50)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  const docs = snap.docs.map((d) => {
     const data = d.data();
     return {
       id: data.id,
@@ -106,15 +121,15 @@ export async function listDocuments(
       ownerId: data.ownerId,
       ownerName: data.ownerName,
       createdAt:
-        data.createdAt instanceof Timestamp
-          ? data.createdAt.toMillis()
-          : (data.createdAt as number),
+        data.createdAt?.toMillis?.() ?? (data.createdAt as number) ?? Date.now(),
       updatedAt:
-        data.updatedAt instanceof Timestamp
-          ? data.updatedAt.toMillis()
-          : (data.updatedAt as number),
+        data.updatedAt?.toMillis?.() ?? (data.updatedAt as number) ?? Date.now(),
+      participants: data.participants ?? [data.ownerId],
+      invitedUsers: data.invitedUsers ?? [],
+      acceptedUsers: data.acceptedUsers ?? [data.ownerId],
     } satisfies DocumentMeta;
   });
+  return docs.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function updateDocumentTitle(
@@ -127,8 +142,86 @@ export async function updateDocumentTitle(
   });
 }
 
+/**
+ * Deletes all documents in a collection in batches.
+ * Firestore Web SDK doesn't support recursive deletion natively.
+ */
+async function deleteCollection(colRef: any) {
+  const snap = await getDocs(colRef);
+  if (snap.empty) return;
+
+  const batches: Promise<void>[] = [];
+  let batch = writeBatch(db);
+  let count = 0;
+
+  for (const d of snap.docs) {
+    batch.delete(d.ref);
+    count++;
+    if (count === 500) {
+      batches.push(batch.commit());
+      batch = writeBatch(db);
+      count = 0;
+    }
+  }
+  if (count > 0) batches.push(batch.commit());
+  await Promise.all(batches);
+}
+
 export async function deleteDocument(docId: string): Promise<void> {
-  await deleteDoc(doc(db, DOCS_COLLECTION, docId));
+  const docRef = doc(db, DOCS_COLLECTION, docId);
+
+  // 1. Delete cells
+  await deleteCollection(collection(db, DOCS_COLLECTION, docId, CELLS_SUBCOLLECTION));
+
+  // 2. Delete public messages
+  await deleteCollection(collection(db, DOCS_COLLECTION, docId, "messages"));
+
+  // 3. Delete private chats (and their messages)
+  const pcSnap = await getDocs(collection(db, DOCS_COLLECTION, docId, "private_chats"));
+  for (const pcDoc of pcSnap.docs) {
+    await deleteCollection(collection(pcDoc.ref, "messages"));
+    await deleteDoc(pcDoc.ref);
+  }
+
+  // 4. Delete DM signals (and their senders)
+  const dsSnap = await getDocs(collection(db, DOCS_COLLECTION, docId, "dm_signals"));
+  for (const dsDoc of dsSnap.docs) {
+    await deleteCollection(collection(dsDoc.ref, "senders"));
+    await deleteDoc(dsDoc.ref);
+  }
+
+  // 5. Delete presence data (RTDB)
+  await remove(ref(rtdb, `presence/${docId}`));
+
+  // 6. Finally delete the main document
+  await deleteDoc(docRef);
+}
+
+// ─── Invites ──────────────────────────────────────────────────────────────────
+
+export async function acceptInvite(docId: string, userId: string): Promise<void> {
+  await updateDoc(doc(db, DOCS_COLLECTION, docId), {
+    invitedUsers: arrayRemove(userId),
+    acceptedUsers: arrayUnion(userId),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function rejectInvite(docId: string, userId: string): Promise<void> {
+  await updateDoc(doc(db, DOCS_COLLECTION, docId), {
+    participants: arrayRemove(userId),
+    invitedUsers: arrayRemove(userId),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function inviteToDocument(docId: string, userIds: string[]): Promise<void> {
+  if (userIds.length === 0) return;
+  await updateDoc(doc(db, DOCS_COLLECTION, docId), {
+    participants: arrayUnion(...userIds),
+    invitedUsers: arrayUnion(...userIds),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ─── Cell operations ─────────────────────────────────────────────────────────
@@ -211,12 +304,48 @@ export async function updateColOrder(
 
 // ─── Real-time listeners ─────────────────────────────────────────────────────
 
+export function subscribeDocuments(
+  userId: string,
+  callback: (docs: DocumentMeta[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, DOCS_COLLECTION),
+    where("participants", "array-contains", userId),
+    limit(50)
+  );
+  return onSnapshot(q, (snap) => {
+    const docs: DocumentMeta[] = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: data.id,
+        title: data.title,
+        ownerId: data.ownerId,
+        ownerName: data.ownerName,
+        createdAt:
+          data.createdAt?.toMillis?.() ?? (data.createdAt as number) ?? Date.now(),
+        updatedAt:
+          data.updatedAt?.toMillis?.() ?? (data.updatedAt as number) ?? Date.now(),
+        participants: data.participants ?? [data.ownerId],
+        invitedUsers: data.invitedUsers ?? [],
+        acceptedUsers: data.acceptedUsers ?? [data.ownerId],
+      } satisfies DocumentMeta;
+    });
+    docs.sort((a, b) => b.updatedAt - a.updatedAt);
+    callback(docs);
+  }, onError);
+}
+
 export function subscribeDocument(
   docId: string,
-  callback: (meta: Partial<SheetDocument>) => void
+  callback: (meta: Partial<SheetDocument>) => void,
+  onDeleted?: () => void
 ): Unsubscribe {
   return onSnapshot(doc(db, DOCS_COLLECTION, docId), (snap) => {
-    if (!snap.exists()) return;
+    if (!snap.exists()) {
+      onDeleted?.();
+      return;
+    }
     const data = snap.data();
     callback({
       id: data.id,
@@ -225,9 +354,7 @@ export function subscribeDocument(
       rowHeights: data.rowHeights ?? {},
       colOrder: data.colOrder,
       updatedAt:
-        data.updatedAt instanceof Timestamp
-          ? data.updatedAt.toMillis()
-          : (data.updatedAt as number),
+        data.updatedAt?.toMillis?.() ?? (data.updatedAt as number) ?? Date.now(),
     });
   });
 }
@@ -248,4 +375,184 @@ export function subscribeCells(
       });
     }
   );
+}
+
+// ─── Chat Messaging (Ephemeral) ────────────────────────────────────────────────
+
+export async function sendChatMessage(
+  docId: string,
+  uid: string,
+  displayName: string,
+  text: string,
+  color: string,
+  targetUid?: string
+): Promise<void> {
+  let messagesRef;
+  if (targetUid) {
+    const convId = [uid, targetUid].sort().join("_");
+    messagesRef = collection(db, DOCS_COLLECTION, docId, "private_chats", convId, "messages");
+    // Signal private unread for the recipient
+    await setDmUnreadStatus(docId, uid, targetUid, true);
+  } else {
+    messagesRef = collection(db, DOCS_COLLECTION, docId, "messages");
+  }
+
+  await addDoc(messagesRef, {
+    uid,
+    displayName,
+    text,
+    color,
+    timestamp: serverTimestamp(),
+  });
+}
+
+export function subscribeChatMessages(
+  docId: string,
+  callback: (messages: any[]) => void,
+  targetUid?: string,
+  myUid?: string
+): Unsubscribe {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  
+  let messagesRef;
+  if (targetUid && myUid) {
+    const convId = [myUid, targetUid].sort().join("_");
+    messagesRef = collection(db, DOCS_COLLECTION, docId, "private_chats", convId, "messages");
+  } else {
+    messagesRef = collection(db, DOCS_COLLECTION, docId, "messages");
+  }
+
+  const q = query(
+    messagesRef,
+    where("timestamp", ">=", Timestamp.fromMillis(oneHourAgo)),
+    orderBy("timestamp", "asc")
+  );
+
+  return onSnapshot(q, (snap) => {
+    const msgs = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      timestamp: d.data().timestamp?.toMillis?.() ?? Date.now(),
+    }));
+    callback(msgs);
+  });
+}
+
+/**
+ * Signals that a user has unread messages from another user in a DM context.
+ * Path: documents/{docId}/dm_signals/{recipient}/senders/{sender}
+ */
+export async function setDmUnreadStatus(
+  docId: string,
+  senderUid: string,
+  recipientUid: string,
+  hasUnread: boolean
+): Promise<void> {
+  const signalRef = doc(
+    db, 
+    DOCS_COLLECTION, docId, 
+    "dm_signals", recipientUid, 
+    "senders", senderUid
+  );
+  
+  if (hasUnread) {
+    await setDoc(signalRef, { hasUnread: true, timestamp: serverTimestamp() }, { merge: true });
+  } else {
+    // We could delete or just set false. Let's delete to keep subcollections clean?
+    // Actually set false is easier to listen to without flickering.
+    await setDoc(signalRef, { hasUnread: false, timestamp: serverTimestamp() }, { merge: true });
+  }
+}
+
+export function subscribeDmSignals(
+  docId: string,
+  myUid: string,
+  callback: (unreadUids: string[]) => void
+): Unsubscribe {
+  // Listen to all signals sent to me
+  const signalsRef = collection(db, DOCS_COLLECTION, docId, "dm_signals", myUid, "senders");
+  const q = query(signalsRef, where("hasUnread", "==", true));
+
+  return onSnapshot(q, (snap) => {
+    const uids = snap.docs.map(d => d.id);
+    callback(uids);
+  });
+}
+
+// ─── User profile (nickname) ──────────────────────────────────────────────────
+
+const USERS_COLLECTION = "users";
+
+export async function getUserNickname(uid: string): Promise<string | null> {
+  const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
+  if (!snap.exists()) return null;
+  return (snap.data().nickname as string) ?? null;
+}
+
+export async function setUserProfile(
+  uid: string,
+  profile: {
+    displayName: string;
+    email: string | null;
+    nickname?: string;
+  }
+): Promise<void> {
+  const data: Record<string, string | null | undefined> = {
+    displayName: profile.displayName,
+    email: profile.email,
+  };
+  if (profile.nickname) {
+    data.nickname = profile.nickname;
+  }
+  await setDoc(doc(db, USERS_COLLECTION, uid), data, { merge: true });
+}
+
+export async function isNicknameTaken(nickname: string, excludeUid?: string): Promise<boolean> {
+  const usersRef = collection(db, USERS_COLLECTION);
+  const q = query(usersRef, where("nickname", "==", nickname), limit(1));
+  const snap = await getDocs(q);
+  
+  if (snap.empty) return false;
+  
+  if (excludeUid) {
+    const doc = snap.docs[0];
+    return doc.id !== excludeUid;
+  }
+  
+  return true;
+}
+
+export async function searchUsersByEmailOrNickname(
+  queryText: string
+): Promise<{ uid: string; displayName: string; email: string | null; nickname?: string }[]> {
+  const text = queryText.toLowerCase().trim();
+  if (!text) return [];
+
+  // Note: For a robust implementation we'd need a third-party service like Algolia or a specialized database index.
+  // For this simplified example, we'll fetch a limited set of users and filter client-side, OR we can try to do a simple query.
+  // We'll limit to 20 users that match.
+
+  // Querying all users is not ideal for large sets, but Firestore doesn't support complex substring search natively.
+  // A simple hack for startsWith search is to use `>=` and `<=`.
+  // We will do a generic fetch and filter.
+  // In a real app we'd use Algolia.
+  const usersSnap = await getDocs(query(collection(db, USERS_COLLECTION), limit(100)));
+  const matches = [];
+
+  for (const docSnap of usersSnap.docs) {
+    const data = docSnap.data();
+    const email = (data.email || "").toLowerCase();
+    const nickname = (data.nickname || "").toLowerCase();
+
+    if (email.includes(text) || nickname.includes(text)) {
+      matches.push({
+        uid: docSnap.id,
+        displayName: data.displayName,
+        email: data.email,
+        nickname: data.nickname,
+      });
+    }
+  }
+
+  return matches;
 }

@@ -4,15 +4,17 @@ import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useAuthStore, colorForUid } from "@/lib/sync/authStore";
+import { getUserNickname } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/types";
 
 export function useAuthInit(): void {
   const { setUser, setInitialized } = useAuthStore();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const user: AppUser = {
+        // Set basic user info first to unblock UI
+        const baseUser: AppUser = {
           uid: firebaseUser.uid,
           displayName:
             firebaseUser.displayName ??
@@ -26,11 +28,21 @@ export function useAuthInit(): void {
           color: colorForUid(firebaseUser.uid),
           isAnonymous: firebaseUser.isAnonymous,
         };
-        setUser(user);
+        setUser(baseUser);
+        setInitialized(true);
+
+        // Fetch nickname in the background if not anonymous
+        if (!firebaseUser.isAnonymous) {
+          getUserNickname(firebaseUser.uid).then((saved) => {
+            if (saved) {
+              setUser({ ...baseUser, nickname: saved });
+            }
+          }).catch(console.error);
+        }
       } else {
         setUser(null);
+        setInitialized(true);
       }
-      setInitialized(true);
     });
 
     return unsub;

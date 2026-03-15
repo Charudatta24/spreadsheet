@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { MessageSquare } from "lucide-react";
 import { useEditorStore } from "@/lib/sync/store";
 import { useAuthStore } from "@/lib/sync/authStore";
 
-export function PresenceBar() {
+export function PresenceBar({ 
+  onToggleChat, 
+  unreadCount,
+  onSelectTarget,
+  unreadDmUids = []
+}: { 
+  onToggleChat: () => void; 
+  unreadCount: number;
+  onSelectTarget: (uid: string | null) => void;
+  unreadDmUids?: string[];
+}) {
   const { presenceUsers } = useEditorStore();
   const { user } = useAuthStore();
   const [showList, setShowList] = useState(false);
@@ -26,7 +37,12 @@ export function PresenceBar() {
           />
         )}
         {others.slice(0, 5).map((u) => (
-          <Avatar key={u.uid} name={u.displayName} color={u.color} title={u.displayName} />
+          <Avatar
+            key={u.uid}
+            name={u.displayName}
+            color={u.color}
+            title={u.nickname ? `${u.displayName} (@${u.nickname})` : u.displayName}
+          />
         ))}
         {others.length > 5 && (
           <div className="w-6 h-6 rounded-full bg-sheet-border border-2 border-sheet-bg flex items-center justify-center text-[9px] font-bold text-sheet-muted">
@@ -35,14 +51,33 @@ export function PresenceBar() {
         )}
       </div>
 
-      {others.length > 0 && (
+      <div className="flex items-center gap-2 ml-2">
+        <button
+          onClick={onToggleChat}
+          className="relative p-1.5 rounded hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
+          title="Open Group Chat"
+        >
+          <MessageSquare size={16} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold rounded-full px-1 flex items-center justify-center border-white border shadow-sm">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setShowList(!showList)}
-          className="text-xs text-sheet-muted hover:text-sheet-text ml-1 transition-colors"
+          className="relative text-xs text-sheet-muted hover:text-sheet-text transition-colors flex items-center gap-1.5"
         >
-          {others.length} online
+          {others.length > 0 ? `${others.length} online` : "Online"}
+          {unreadDmUids.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white" />
+              <span className="text-[10px] font-bold text-red-500">{unreadDmUids.length}</span>
+            </div>
+          )}
         </button>
-      )}
+      </div>
 
       {/* Dropdown list */}
       {showList && (
@@ -53,16 +88,40 @@ export function PresenceBar() {
           <div className="px-3 py-1 text-[10px] font-semibold uppercase text-sheet-muted tracking-wider">
             Active users
           </div>
-          {user && (
-            <UserRow name={user.displayName} color={user.color} cell={null} suffix="(you)" />
-          )}
-          {others.map((u) => (
+          
+          <button 
+            className="w-full text-left"
+            onClick={() => {
+              onSelectTarget(null);
+              setShowList(false);
+            }}
+          >
             <UserRow
-              key={u.uid}
-              name={u.displayName}
-              color={u.color}
-              cell={u.focusedCell ?? null}
+              name="Group"
+              nickname="Everyone"
+              color="#6b7280"
+              cell={null}
+              hasUnread={unreadCount > 0}
             />
+          </button>
+
+          {others.map((u) => (
+            <button 
+              key={u.uid} 
+              className="w-full text-left"
+              onClick={() => {
+                onSelectTarget(u.uid);
+                setShowList(false);
+              }}
+            >
+              <UserRow
+                name={u.displayName}
+                nickname={u.nickname}
+                color={u.color}
+                cell={u.focusedCell ?? null}
+                hasUnread={unreadDmUids.includes(u.uid)}
+              />
+            </button>
           ))}
         </div>
       )}
@@ -94,26 +153,36 @@ function Avatar({
 
 function UserRow({
   name,
+  nickname,
   color,
   cell,
   suffix,
+  hasUnread
 }: {
   name: string;
+  nickname?: string;
   color: string;
   cell: string | null;
   suffix?: string;
+  hasUnread?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5">
-      <div
-        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-        style={{ background: color }}
-      >
-        {name?.[0]?.toUpperCase() ?? "?"}
+    <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-sheet-bg/50 transition-colors">
+      <div className="relative shrink-0">
+        <div
+          className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+          style={{ background: color }}
+        >
+          {name?.[0]?.toUpperCase() ?? "?"}
+        </div>
+        {hasUnread && (
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white" />
+        )}
       </div>
-      <div className="min-w-0">
-        <div className="text-xs text-sheet-text truncate">
-          {name} {suffix && <span className="text-sheet-muted">{suffix}</span>}
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-sheet-text truncate flex items-center gap-1">
+          {name} {nickname && <span className="text-sheet-muted ml-1">(@{nickname})</span>} {suffix && <span className="text-sheet-muted">{suffix}</span>}
+          {hasUnread && <MessageSquare size={10} className="text-red-500 fill-red-500" />}
         </div>
         {cell && <div className="text-[10px] text-sheet-muted">{cell}</div>}
       </div>
