@@ -120,9 +120,9 @@ function MeasurementDashboardContent() {
   const [singleName, setSingleName] = useState("");
   const [numPeople, setNumPeople] = useState<number | "">(2);
   const [selectedPeople, setSelectedPeople] = useState<SelectedPerson[]>([{ userId: "", name: "" }, { userId: "", name: "" }]);
-  const [formStartingSerialNumber, setFormStartingSerialNumber] = useState<number>(1);
+  const [formStartingSerialNumber, setFormStartingSerialNumber] = useState<number | null>(1);
   const [formNumSlabs, setFormNumSlabs] = useState("1");
-  const [formNumMachines, setFormNumMachines] = useState<number>(3);
+  const [formNumMachines, setFormNumMachines] = useState<number | null>(3);
   const [isCreating, setIsCreating] = useState(false);
 
   // Subscribe to sheets with clean deletion sync
@@ -188,6 +188,7 @@ function MeasurementDashboardContent() {
       setFormNumSlabs("1");
       setFormNumMachines(3);
     }
+    setFormStartingSerialNumber(1);
   }, [activeSheetCategory, showCreateModal]);
 
   const handleNumPeopleChange = (valStr: string) => {
@@ -218,9 +219,18 @@ function MeasurementDashboardContent() {
   const effectiveSheetType = formPersonType === "worker" ? "multiple" : formSheetType;
   const effectiveLocationType = formPersonType === "worker" ? "local" : formLocationType;
 
+  const isStartingSerialValid =
+    typeof formStartingSerialNumber === "number" && Number.isInteger(formStartingSerialNumber) && formStartingSerialNumber >= 1;
+
+  const isMachinesValid =
+    activeSheetCategory !== "cutting" ||
+    (typeof formNumMachines === "number" && Number.isInteger(formNumMachines) && formNumMachines >= 1);
+
   // Form Validation
   const isFormValid = (() => {
     if (!formPersonType) return false;
+    if (!isStartingSerialValid) return false;
+    if (!isMachinesValid) return false;
     if (formPersonType === "customer") {
       if (!formLocationType || !formSheetType) return false;
     }
@@ -256,9 +266,15 @@ function MeasurementDashboardContent() {
 
     const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
-    const sno = formStartingSerialNumber >= 1 ? formStartingSerialNumber : 1;
+    if (typeof formStartingSerialNumber !== "number" || !Number.isInteger(formStartingSerialNumber) || formStartingSerialNumber < 1) return;
+    const sno = formStartingSerialNumber;
     const slabsValue = formNumSlabs === "" ? 1 : Math.max(1, parseInt(formNumSlabs, 10) || 1);
-    const machinesValue = formNumMachines >= 1 ? formNumMachines : 3;
+    const machinesValue =
+      category === "cutting"
+        ? (typeof formNumMachines === "number" && Number.isInteger(formNumMachines) && formNumMachines >= 1 ? formNumMachines : null)
+        : 3;
+    if (category === "cutting" && machinesValue === null) return;
+    const safeMachinesValue = machinesValue ?? 3;
 
     // Build initial rows with correct serial numbers starting at sno
     const buildRows = (startSno: number) =>
@@ -332,10 +348,10 @@ function MeasurementDashboardContent() {
       ...(category === "cutting"
         ? {
             cuttingData: {
-              numMachines: machinesValue,
+              numMachines: safeMachinesValue,
               numPolishes: Math.max(1, people.length),
               polishes: people.map((p) => ({ userId: p.userId, name: p.name })),
-              machines: Array.from({ length: machinesValue }, (_, i) => ({
+              machines: Array.from({ length: safeMachinesValue }, (_, i) => ({
                 id: `machine_${i + 1}`,
                 name: `Machine ${i + 1}`,
                 assignedRows: [],
@@ -675,7 +691,7 @@ function MeasurementDashboardContent() {
   }
 
   // ── 2. DEDICATED SECTION (Customer, Polish or Cutting) ──────────────────────────────
-  const isWorkerSection = activeSheetCategory === "polish";
+  const isWorkerSection = activeSheetCategory === "polish" || activeSheetCategory === "cutting";
 
   return (
     <div className="min-h-screen bg-sheet-bg text-sheet-text overflow-x-hidden">
@@ -736,8 +752,8 @@ function MeasurementDashboardContent() {
           </div>
         </div>
 
-        {/* ── PENDING WORKER REQUESTS (Worker Section Only) ──────────────── */}
-        {isWorkerSection && pendingSheets.length > 0 && (
+        {/* ── PENDING REQUESTS ──────────────── */}
+        {pendingSheets.length > 0 && (
           <div className="mb-8">
             <h2 className="text-sm font-bold text-sheet-text flex items-center gap-2 mb-3">
               <Bell size={16} className="text-amber-500" />
@@ -1005,32 +1021,23 @@ function MeasurementDashboardContent() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={formStartingSerialNumber}
+                value={formStartingSerialNumber ?? ""}
                 onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (!isNaN(v) && v >= 1) setFormStartingSerialNumber(v);
-                  else if (e.target.value === "") setFormStartingSerialNumber(1);
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setFormStartingSerialNumber(null);
+                    return;
+                  }
+                  if (/^\d+$/.test(raw)) {
+                    const parsed = Number(raw);
+                    setFormStartingSerialNumber(parsed >= 1 ? parsed : null);
+                  } else {
+                    setFormStartingSerialNumber(null);
+                  }
                 }}
                 className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
               />
             </div>
-
-            {activeSheetCategory === "customer" && (
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">
-                  Number of Slabs <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={formNumSlabs}
-                  onChange={(e) => setFormNumSlabs(e.target.value)}
-                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
-                  placeholder="1"
-                />
-              </div>
-            )}
 
             {activeSheetCategory === "cutting" && (
               <div>
@@ -1041,11 +1048,19 @@ function MeasurementDashboardContent() {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={formNumMachines}
+                  value={formNumMachines ?? ""}
                   onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (!isNaN(v) && v >= 1) setFormNumMachines(v);
-                    else if (e.target.value === "") setFormNumMachines(1);
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      setFormNumMachines(null);
+                      return;
+                    }
+                    if (/^\d+$/.test(raw)) {
+                      const parsed = Number(raw);
+                      setFormNumMachines(parsed >= 1 ? parsed : null);
+                    } else {
+                      setFormNumMachines(null);
+                    }
                   }}
                   className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
