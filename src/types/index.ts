@@ -223,6 +223,33 @@ export type SheetActivityLog = {
   timestamp: number;
 };
 
+export type CuttingRowItem = {
+  rowId: string;
+  sno: number;
+  length: number | null;
+  height: number | null;
+  calculated: number;
+  cutLength?: number | null;
+  cutHeight?: number | null;
+  waste?: number | null;
+  polishName?: string;
+  remark?: string;
+};
+
+export type CuttingMachineSection = {
+  id: string;
+  name: string; // e.g. "Machine 1"
+  assignedRows: CuttingRowItem[];
+};
+
+export type CuttingData = {
+  numMachines: number;
+  numPolishes: number;
+  polishes: { userId?: string; name: string }[];
+  machines: CuttingMachineSection[];
+  updatedAt?: string;
+};
+
 export type MeasurementSheet = {
   id: string;
   userId: string;
@@ -243,5 +270,11 @@ export type MeasurementSheet = {
   history?: SheetActivityLog[];
   createdAt: any;
   updatedAt: any;
+  // Soft-delete / trash fields
+  deleted?: boolean;
+  deletedAt?: any;        // Firestore Timestamp — when soft-deleted
+  permanentDeleteAt?: any; // Firestore Timestamp — deletedAt + 5 days
+  // Cutting Sheet data
+  cuttingData?: CuttingData;
 };
 

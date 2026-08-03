@@ -17,6 +17,7 @@ import {
   Shield,
   Clock,
   Lock,
+  Scissors,
 } from "lucide-react";
 import type { MeasurementSheet, SaveState, WorkerPermissions } from "@/types";
 import { exportMeasurementToExcel, exportMeasurementToCSV, calculateSheetTotal } from "@/lib/measurementExport";
@@ -157,6 +158,16 @@ export function MeasurementToolbar({
 
         {/* Right: status, indicator, actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Cutting Sheet Button (Requirement 5) */}
+          <Link
+            href={`/measurement-sheets/${sheet.id}/cutting`}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95 shrink-0"
+            title="Open Cutting Sheet for this measurement sheet"
+          >
+            <Scissors size={14} />
+            <span>Cutting Sheet</span>
+          </Link>
+
           {/* Permission Indicator Badge */}
           <span
             className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -176,7 +187,7 @@ export function MeasurementToolbar({
             <button
               onClick={() => setShowPermissionsModal(true)}
               className="p-1.5 rounded-lg border border-sheet-border hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1"
-              title="Manage Worker Permissions"
+              title="Manage Member & Polish Permissions"
             >
               <Shield size={14} className="text-purple-600" />
               <span className="hidden md:inline text-[11px]">Permissions</span>

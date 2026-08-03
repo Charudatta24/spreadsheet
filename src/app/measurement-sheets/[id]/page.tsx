@@ -194,6 +194,7 @@ export default function MeasurementSheetEditorPage() {
           <MeasurementGrid
             key={`${sheet.id}_${activePersonIdx}`}
             locationType={sheet.locationType}
+            personType={sheet.personType}
             startingSerialNumber={sheet.startingSerialNumber ?? 1}
             rows={currentPerson.rows}
             onChangeRows={handleRowsChange}

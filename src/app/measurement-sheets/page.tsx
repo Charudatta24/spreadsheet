@@ -96,6 +96,13 @@ function MeasurementDashboardContent() {
   const [renameInput, setRenameInput] = useState("");
   const [statusModalSheet, setStatusModalSheet] = useState<MeasurementSheet | null>(null);
 
+  // Manage Sheet & Members state (Requirement 2)
+  const [manageSheet, setManageSheet] = useState<MeasurementSheet | null>(null);
+  const [manageTitle, setManageTitle] = useState("");
+  const [managePeople, setManagePeople] = useState<PersonMeasurement[]>([]);
+  const [newMemberUserId, setNewMemberUserId] = useState("");
+  const [isSavingManage, setIsSavingManage] = useState(false);
+
   // Create Form State
   const [formDate, setFormDate] = useState(format(new Date(), "dd-MMM-yyyy"));
   const [formPersonType, setFormPersonType] = useState<PersonType | null>(null);
@@ -337,15 +344,57 @@ function MeasurementDashboardContent() {
     }
   };
 
-  // Delete Sheet with full persistence
-  const handleDeleteSheet = async (id: string) => {
+  // Save Manage Members & Permissions (Requirement 2)
+  const handleSaveManageSheet = async () => {
+    if (!manageSheet || !user) return;
+    setIsSavingManage(true);
     try {
-      await deleteDoc(doc(db, "measurementSheets", id));
-      try { localStorage.removeItem(`measurement_${id}`); } catch (_) {}
-      setSheets((prev) => prev.filter((s) => s.id !== id));
+      const participantIds = Array.from(
+        new Set([
+          user.uid,
+          ...managePeople.map((p) => p.userId).filter((id): id is string => Boolean(id)),
+        ])
+      );
+      await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
+        title: manageTitle.trim() || manageSheet.title,
+        people: managePeople,
+        participantIds,
+        updatedAt: serverTimestamp(),
+      });
+      setManageSheet(null);
+    } catch (err) {
+      console.error("Error saving managed sheet:", err);
+    } finally {
+      setIsSavingManage(false);
+    }
+  };
+
+  // Soft-delete: move to trash (5-day recovery period)
+  const handleDeleteSheet = async (id: string) => {
+    if (!user) return;
+    try {
+      const now = new Date();
+      const permanentDeleteAt = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+      const sheet = sheets.find((s) => s.id === id);
+      const historyEntry = {
+        action: "Owner moved sheet to Deleted Sheets",
+        userId: user.uid,
+        userName: user.displayName || "Owner",
+        timestamp: Date.now(),
+      };
+      await updateDoc(doc(db, "measurementSheets", id), {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+        permanentDeleteAt: Timestamp.fromDate(permanentDeleteAt),
+        updatedAt: serverTimestamp(),
+        history: [
+          historyEntry,
+          ...(sheet?.history || []),
+        ],
+      });
       setDeletingId(null);
     } catch (err) {
-      console.error("Error deleting measurement sheet:", err);
+      console.error("Error soft-deleting measurement sheet:", err);
     }
   };
 
@@ -404,8 +453,9 @@ function MeasurementDashboardContent() {
 
   const todayISO = format(new Date(), "yyyy-MM-dd");
 
-  // Filter sheets by activeTypeParam (Worker vs Customer)
+  // Filter sheets by activeTypeParam (Worker vs Customer) — always exclude soft-deleted sheets
   const currentCategorySheets = sheets.filter((s) => {
+    if (s.deleted) return false;
     if (!activeTypeParam) return true;
     return s.personType === activeTypeParam;
   });
@@ -802,36 +852,46 @@ function MeasurementDashboardContent() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-sheet-border pt-3 mt-2 text-xs">
-                    <div className="font-mono text-emerald-600 font-bold text-xs">
-                      TOTAL: {s.total || 0}
+                  {/* Always-Visible Action Buttons (Requirement 1 & 2) */}
+                  {isOwner && (
+                    <div className="flex items-center gap-1.5 border-t border-sheet-border pt-3 mt-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setManageSheet(s);
+                          setManageTitle(s.title);
+                          setManagePeople([...s.people]);
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200/80 transition-all active:scale-95"
+                        title="Manage Members & Permissions"
+                      >
+                        <Edit2 size={12} />
+                        <span>Change</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDuplicateSheet(s);
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all active:scale-95"
+                        title="Copy Sheet"
+                      >
+                        <Copy size={12} />
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingId(s.id);
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 transition-all active:scale-95"
+                        title="Delete Sheet"
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete</span>
+                      </button>
                     </div>
-                    {isOwner && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setRenamingSheet({ id: s.id, title: s.title }); setRenameInput(s.title); }}
-                          className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700"
-                          title="Rename"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDuplicateSheet(s); }}
-                          className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700"
-                          title="Duplicate"
-                        >
-                          <Copy size={13} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingId(s.id); }}
-                          className="p-1.5 hover:bg-red-50 rounded text-slate-400 hover:text-red-500"
-                          title="Delete"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -1024,14 +1084,187 @@ function MeasurementDashboardContent() {
         </div>
       )}
 
-      {/* ── DELETE CONFIRMATION MODAL ─────────────────────────────────────── */}
+      {/* ── MANAGE SHEET & MEMBERS MODAL (Requirement 2) ────────────────── */}
+      {manageSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-sheet-border pb-3">
+              <h2 className="text-base font-bold text-sheet-text flex items-center gap-2">
+                <Edit2 size={18} className="text-emerald-600" />
+                Manage Sheet & Permissions
+              </h2>
+              <button onClick={() => setManageSheet(null)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Sheet Title */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">Sheet Title</label>
+              <input
+                type="text"
+                value={manageTitle}
+                onChange={(e) => setManageTitle(e.target.value)}
+                className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/40"
+              />
+            </div>
+
+            {/* Members & Permissions */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-600">
+                  Members / Polishes ({managePeople.length})
+                </label>
+              </div>
+
+              {/* Add Member Dropdown */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  + Add Member / Polish
+                </label>
+                <UserSelectDropdown
+                  value={newMemberUserId}
+                  onChange={(userId, name) => {
+                    if (userId && name) {
+                      const alreadyAdded = managePeople.some((p) => p.userId === userId || p.name === name);
+                      if (!alreadyAdded) {
+                        setManagePeople([
+                          ...managePeople,
+                          {
+                            name,
+                            userId,
+                            status: "pending",
+                            rows: EMPTY_ROWS.map((r, i) => ({
+                              rowNumber: i + 1,
+                              serialNumber: (manageSheet.startingSerialNumber || 1) + i,
+                              A: null,
+                              B: null,
+                              C: null,
+                              D: null,
+                              E: null,
+                              remark: "",
+                            })),
+                            permissions: {
+                              canView: true,
+                              canModifyMeasurements: true,
+                              canModifySerialNumbers: false,
+                              canModifyRemarks: true,
+                              canAddRows: true,
+                              canDeleteRows: false,
+                            },
+                          },
+                        ]);
+                      }
+                      setNewMemberUserId("");
+                    }
+                  }}
+                  excludeUserIds={[user?.uid || "", ...managePeople.map((p) => p.userId).filter((id): id is string => Boolean(id))]}
+                  placeholder="Select person to add…"
+                />
+              </div>
+
+              {/* Members List */}
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {managePeople.map((person, idx) => {
+                  const canModify = Boolean(person.permissions?.canModifyMeasurements);
+
+                  return (
+                    <div key={idx} className="p-3 rounded-xl bg-white border border-sheet-border/80 shadow-sm flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                            {person.name[0]?.toUpperCase()}
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 truncate">{person.name}</span>
+                        </div>
+
+                        {/* Permission selector: Can Modify vs Cannot Modify / View Only */}
+                        <div className="flex items-center gap-2 text-xs">
+                          <label className="text-[11px] font-medium text-slate-500">Permission:</label>
+                          <select
+                            value={canModify ? "can_modify" : "view_only"}
+                            onChange={(e) => {
+                              const isCanModify = e.target.value === "can_modify";
+                              const updated = [...managePeople];
+                              updated[idx] = {
+                                ...updated[idx],
+                                permissions: {
+                                  canView: true,
+                                  canModifyMeasurements: isCanModify,
+                                  canModifySerialNumbers: false,
+                                  canModifyRemarks: isCanModify,
+                                  canAddRows: isCanModify,
+                                  canDeleteRows: isCanModify,
+                                },
+                              };
+                              setManagePeople(updated);
+                            }}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
+                          >
+                            <option value="can_modify">Can Modify</option>
+                            <option value="view_only">Cannot Modify / View Only</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {managePeople.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManagePeople(managePeople.filter((_, i) => i !== idx));
+                          }}
+                          className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
+                          title="Remove Member"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-sheet-border pt-4">
+              <button
+                type="button"
+                onClick={() => setManageSheet(null)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingManage}
+                onClick={handleSaveManageSheet}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                {isSavingManage ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE (SOFT) CONFIRMATION MODAL ─────────────────────────────── */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
-            <h3 className="font-bold text-base text-sheet-text">Delete Measurement Sheet?</h3>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-sheet-text mb-1">Move to Deleted Sheets?</h3>
+                <p className="text-xs text-slate-500">
+                  The sheet will remain recoverable for <strong>5 days</strong>. After 5 days, it will be permanently deleted and cannot be restored.
+                </p>
+              </div>
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setDeletingId(null)} className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border">Cancel</button>
-              <button onClick={() => handleDeleteSheet(deletingId)} className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 shadow-sm">Delete</button>
+              <button onClick={() => handleDeleteSheet(deletingId)} className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 shadow-sm">Move to Deleted</button>
             </div>
           </div>
         </div>

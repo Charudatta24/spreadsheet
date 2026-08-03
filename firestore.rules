@@ -97,12 +97,39 @@ service cloud.firestore {
 
     // ── Measurement Sheets ─────────────────────────────────────────────────────
     match /measurementSheets/{sheetId} {
+      // Create: only by the owner themselves
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+      // Hard delete: only by the document owner
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow read, update: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || (
+
+      // Read: owner can always read (including trashed); participants only if NOT deleted
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.deleted != true &&
           resource.data.participantIds != null &&
-          request.auth.uid in resource.data.participantIds && (
+          request.auth.uid in resource.data.participantIds &&
+          (
+            resource.data.personType != "worker" || (
+              resource.data.dateTimestamp == null || (
+                request.time >= resource.data.dateTimestamp - duration.value(12, 'h') &&
+                request.time <= resource.data.dateTimestamp + duration.value(36, 'h')
+              )
+            )
+          )
+        )
+      );
+
+      // Update: owner can always update (including soft-delete / restore operations)
+      //         participants can update only if NOT deleted and within date window
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.deleted != true &&
+          resource.data.participantIds != null &&
+          request.auth.uid in resource.data.participantIds &&
+          (
             resource.data.personType != "worker" || (
               resource.data.dateTimestamp == null || (
                 request.time >= resource.data.dateTimestamp - duration.value(12, 'h') &&

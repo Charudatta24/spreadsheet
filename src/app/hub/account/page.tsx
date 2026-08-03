@@ -1,21 +1,327 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     ArrowLeft, Mail, AtSign, Calendar,
     Pencil, Check, X, Loader2, UserCircle,
+    Trash2, RotateCcw, AlertTriangle, Clock, Ruler,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
 import { setUserProfile, isNicknameTaken } from "@/lib/firebase/firestore";
 import { subscribeFriends, FriendEntry } from "@/lib/firebase/friends";
+import {
+    collection, query, where, onSnapshot,
+    updateDoc, deleteDoc, doc, serverTimestamp,
+    deleteField,
+} from "firebase/firestore";
+import type { MeasurementSheet } from "@/types";
 
-export default function AccountPage() {
+// ── Countdown helper ──────────────────────────────────────────────────────────
+function getCountdown(permanentDeleteAt: any): string {
+    if (!permanentDeleteAt) return "";
+    const target: Date = permanentDeleteAt?.toDate ? permanentDeleteAt.toDate() : new Date(permanentDeleteAt);
+    const now = new Date();
+    const diffMs = target.getTime() - now.getTime();
+    if (diffMs <= 0) return "Expiring soon";
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays >= 2) return `${diffDays} days remaining`;
+    if (diffDays === 1) {
+        const hoursLeft = diffHours % 24;
+        return `1 day ${hoursLeft}h remaining`;
+    }
+    if (diffHours >= 1) {
+        const minsLeft = diffMins % 60;
+        return `${diffHours}h ${minsLeft}m remaining`;
+    }
+    if (diffMins >= 1) return `${diffMins} minutes remaining`;
+    return "Less than 1 minute remaining";
+}
+
+function isExpired(permanentDeleteAt: any): boolean {
+    if (!permanentDeleteAt) return false;
+    const target: Date = permanentDeleteAt?.toDate ? permanentDeleteAt.toDate() : new Date(permanentDeleteAt);
+    return new Date() >= target;
+}
+
+function formatDeletedAt(deletedAt: any): string {
+    if (!deletedAt) return "";
+    const d: Date = deletedAt?.toDate ? deletedAt.toDate() : new Date(deletedAt);
+    return d.toLocaleString(undefined, {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
+}
+
+// ── Trash Tab Component ───────────────────────────────────────────────────────
+function TrashTab({ uid, displayName }: { uid: string; displayName: string }) {
+    const [trashedSheets, setTrashedSheets] = useState<MeasurementSheet[]>([]);
+    const [loadingTrash, setLoadingTrash] = useState(true);
+    const [restoringId, setRestoringId] = useState<string | null>(null);
+    const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
+    const [confirmPermDeleteId, setConfirmPermDeleteId] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    // Subscribe to soft-deleted sheets owned by this user
+    useEffect(() => {
+        const q = query(
+            collection(db, "measurementSheets"),
+            where("userId", "==", uid),
+            where("deleted", "==", true)
+        );
+        const unsub = onSnapshot(q, async (snap) => {
+            const sheets: MeasurementSheet[] = [];
+            const toPermDelete: string[] = [];
+
+            snap.docs.forEach((d) => {
+                const data = { id: d.id, ...d.data() } as MeasurementSheet;
+                if (isExpired(data.permanentDeleteAt)) {
+                    toPermDelete.push(d.id);
+                } else {
+                    sheets.push(data);
+                }
+            });
+
+            // Auto-permanently delete expired sheets
+            await Promise.all(
+                toPermDelete.map((id) => deleteDoc(doc(db, "measurementSheets", id)).catch(() => { }))
+            );
+
+            setTrashedSheets(sheets);
+            setLoadingTrash(false);
+        });
+        return unsub;
+    }, [uid]);
+
+    // Restore sheet
+    const handleRestore = async (id: string) => {
+        setActionLoading(true);
+        try {
+            const sheet = trashedSheets.find((s) => s.id === id);
+            const historyEntry = {
+                action: "Owner restored sheet",
+                userId: uid,
+                userName: displayName || "Owner",
+                timestamp: Date.now(),
+            };
+            await updateDoc(doc(db, "measurementSheets", id), {
+                deleted: deleteField(),
+                deletedAt: deleteField(),
+                permanentDeleteAt: deleteField(),
+                updatedAt: serverTimestamp(),
+                history: [
+                    historyEntry,
+                    ...(sheet?.history || []),
+                ],
+            });
+            setConfirmRestoreId(null);
+        } catch (err) {
+            console.error("Error restoring sheet:", err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Permanent delete
+    const handlePermanentDelete = async (id: string) => {
+        setActionLoading(true);
+        try {
+            await deleteDoc(doc(db, "measurementSheets", id));
+            setConfirmPermDeleteId(null);
+        } catch (err) {
+            console.error("Error permanently deleting sheet:", err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    if (loadingTrash) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <Loader2 size={22} className="animate-spin text-sheet-accent" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+                <Trash2 size={16} className="text-amber-500" />
+                <h2 className="text-sm font-bold text-sheet-text">Deleted Measurement Sheets</h2>
+                {trashedSheets.length > 0 && (
+                    <span className="bg-amber-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {trashedSheets.length}
+                    </span>
+                )}
+            </div>
+
+            {trashedSheets.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-sheet-border p-8 text-center">
+                    <Trash2 size={36} className="mx-auto mb-3 text-slate-200" />
+                    <p className="text-sm font-semibold text-sheet-text mb-1">No deleted sheets</p>
+                    <p className="text-xs text-slate-400">Measurement sheets you delete will appear here for 5 days before permanent deletion.</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {trashedSheets.map((sheet) => {
+                        const countdown = getCountdown(sheet.permanentDeleteAt);
+                        const deletedStr = formatDeletedAt(sheet.deletedAt);
+                        const totalRows = sheet.people.reduce((acc, p) => acc + (p.rows?.length || 0), 0);
+                        const isUrgent = (() => {
+                            if (!sheet.permanentDeleteAt) return false;
+                            const target: Date = sheet.permanentDeleteAt?.toDate ? sheet.permanentDeleteAt.toDate() : new Date(sheet.permanentDeleteAt);
+                            return (target.getTime() - Date.now()) < 24 * 60 * 60 * 1000;
+                        })();
+
+                        return (
+                            <div
+                                key={sheet.id}
+                                className={`bg-white rounded-2xl border shadow-sm p-4 space-y-3 ${isUrgent ? "border-red-200 bg-red-50/30" : "border-sheet-border"}`}
+                            >
+                                {/* Sheet Info */}
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <Ruler size={13} className="text-emerald-600 shrink-0" />
+                                            <p className="font-bold text-sm text-sheet-text truncate">{sheet.title}</p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar size={10} />
+                                                Sheet date: <strong>{sheet.date}</strong>
+                                            </span>
+                                            <span>{sheet.locationType} · {sheet.personType}</span>
+                                            <span>{totalRows} row{totalRows !== 1 ? "s" : ""}</span>
+                                        </div>
+                                    </div>
+                                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isUrgent ? "bg-red-100 text-red-600" : "bg-amber-50 text-amber-600 border border-amber-200"}`}>
+                                        {sheet.people.length} {sheet.people.length === 1 ? "person" : "people"}
+                                    </span>
+                                </div>
+
+                                {/* Deleted timestamp + countdown */}
+                                <div className={`rounded-xl px-3 py-2 flex items-center gap-2 text-xs ${isUrgent ? "bg-red-100/60 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                                    <Clock size={13} className="shrink-0" />
+                                    <div>
+                                        <span className="font-semibold">Deleted:</span> {deletedStr}
+                                        <span className="mx-2">·</span>
+                                        <span className={`font-bold ${isUrgent ? "text-red-600" : "text-amber-600"}`}>{countdown}</span>
+                                    </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-2 pt-1">
+                                    <button
+                                        onClick={() => setConfirmRestoreId(sheet.id)}
+                                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm"
+                                    >
+                                        <RotateCcw size={13} />
+                                        Restore
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmPermDeleteId(sheet.id)}
+                                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold transition-all"
+                                    >
+                                        <Trash2 size={13} />
+                                        Delete Permanently
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Restore Confirm Modal */}
+            {confirmRestoreId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <RotateCcw size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base text-sheet-text mb-1">Restore this measurement sheet?</h3>
+                                <p className="text-xs text-slate-500">
+                                    The sheet and its previous permissions, measurements, serial numbers, and remarks will be restored to its original location.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setConfirmRestoreId(null)}
+                                disabled={actionLoading}
+                                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleRestore(confirmRestoreId)}
+                                disabled={actionLoading}
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                Restore
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Permanent Delete Confirm Modal */}
+            {confirmPermDeleteId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base text-sheet-text mb-1">Permanently delete this sheet?</h3>
+                                <p className="text-xs text-slate-500">
+                                    This action is <strong>irreversible</strong>. All measurement data, serial numbers, remarks, and worker information will be permanently removed.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setConfirmPermDeleteId(null)}
+                                disabled={actionLoading}
+                                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handlePermanentDelete(confirmPermDeleteId)}
+                                disabled={actionLoading}
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 shadow-sm disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                Delete Permanently
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Main Account Page ─────────────────────────────────────────────────────────
+function AccountPageContent() {
     const { user, setUser } = useAuthStore();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"about" | "friends">("about");
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const [activeTab, setActiveTab] = useState<"about" | "friends" | "trash">(
+        tabParam === "trash" ? "trash" : "about"
+    );
     const [friends, setFriends] = useState<FriendEntry[]>([]);
 
     // Nickname edit state
@@ -68,7 +374,6 @@ export default function AccountPage() {
 
     function handleCancel() { setValue(nickname); setEditing(false); setError(""); }
 
-    // Format created-at from auth metadata if available
     const joinedDate = user
         ? auth.currentUser?.metadata?.creationTime
             ? new Date(auth.currentUser.metadata.creationTime).toLocaleDateString()
@@ -77,13 +382,15 @@ export default function AccountPage() {
 
     if (!user) return <LoadingGrid fullPage size="lg" label="Loading account..." />;
 
+    // Only show trash tab for owners
+    const isOwner = user.accountType === "owner";
+
     return (
         <div className="min-h-screen bg-sheet-bg text-sheet-text">
             <div className="grid-mesh fixed inset-0 pointer-events-none z-0" />
 
-            {/* ── Header ─────────────────────────────────────────────────────────── */}
+            {/* Header */}
             <header className="sticky top-0 z-30 h-16 border-b border-sheet-border bg-sheet-bg/90 backdrop-blur-md flex items-center px-6 justify-between">
-                {/* Back */}
                 <button
                     onClick={() => router.back()}
                     className="group flex items-center gap-2 text-sheet-muted hover:text-sheet-accent transition-colors text-sm font-medium"
@@ -93,15 +400,13 @@ export default function AccountPage() {
                     </div>
                     <span>Back to Hub</span>
                 </button>
-
-                {/* Title */}
                 <div className="flex items-center gap-2">
                     <UserCircle size={16} className="text-sheet-accent" />
                     <span className="font-semibold text-sm text-sheet-text">Account</span>
                 </div>
             </header>
 
-            {/* ── Body ───────────────────────────────────────────────────────────── */}
+            {/* Body */}
             <main className="relative z-10 max-w-xl mx-auto px-6 pt-10 pb-16">
 
                 {/* Avatar + name */}
@@ -113,23 +418,41 @@ export default function AccountPage() {
                     {user.nickname && (
                         <p className="text-sm text-sheet-muted mt-1">@{user.nickname}</p>
                     )}
-                    <span className="mt-2 text-[11px] bg-sheet-accent/10 text-sheet-accent font-semibold px-3 py-1 rounded-full">
-                        {user.isAnonymous ? "Guest" : "Google Account"}
-                    </span>
+                    <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[11px] bg-sheet-accent/10 text-sheet-accent font-semibold px-3 py-1 rounded-full">
+                            {user.isAnonymous ? "Guest" : "Google Account"}
+                        </span>
+                        {user.accountType && (
+                            <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${user.accountType === "owner" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                                {user.accountType === "owner" ? "Owner" : "Non-Owner"}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
-                <div className="mb-4 rounded-2xl border border-sheet-border bg-white/80 p-2 flex gap-2">
+                {/* Tabs */}
+                <div className="mb-4 rounded-2xl border border-sheet-border bg-white/80 p-2 flex gap-2 overflow-x-auto">
                     <button
-                        className={`rounded-lg px-3 py-2 text-sm font-medium ${activeTab === "about" ? "bg-sheet-accent text-white" : "text-sheet-text hover:bg-sheet-bg"}`}
+                        className={`rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === "about" ? "bg-sheet-accent text-white" : "text-sheet-text hover:bg-sheet-bg"}`}
                         onClick={() => setActiveTab("about")}
                     >About</button>
                     <button
-                        className={`rounded-lg px-3 py-2 text-sm font-medium ${activeTab === "friends" ? "bg-sheet-accent text-white" : "text-sheet-text hover:bg-sheet-bg"}`}
+                        className={`rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === "friends" ? "bg-sheet-accent text-white" : "text-sheet-text hover:bg-sheet-bg"}`}
                         onClick={() => setActiveTab("friends")}
                     >Friends</button>
+                    {isOwner && (
+                        <button
+                            className={`rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap flex items-center gap-1.5 ${activeTab === "trash" ? "bg-amber-600 text-white" : "text-amber-700 hover:bg-amber-50 border border-amber-200"}`}
+                            onClick={() => setActiveTab("trash")}
+                        >
+                            <Trash2 size={13} />
+                            Deleted Sheets
+                        </button>
+                    )}
                 </div>
 
-                {activeTab === "about" ? (
+                {/* Tab Content */}
+                {activeTab === "about" && (
                     <div className="space-y-3">
                         <InfoRow
                             icon={<Mail size={16} className="text-sheet-accent" />}
@@ -217,13 +540,14 @@ export default function AccountPage() {
                             value={user.uid}
                         />
                     </div>
-                ) : (
+                )}
+
+                {activeTab === "friends" && (
                     <div className="space-y-3">
                         <div>
                             <div className="text-xs uppercase tracking-widest font-bold text-sheet-muted">Friends</div>
                             <div className="text-sm font-semibold text-sheet-text">Accepted collaborators</div>
                         </div>
-
                         {friends.length === 0 ? (
                             <div className="rounded-2xl border border-sheet-border bg-white px-4 py-5 text-center text-sheet-muted">
                                 No friends yet. Invite someone from the Hub.
@@ -244,6 +568,10 @@ export default function AccountPage() {
                             </div>
                         )}
                     </div>
+                )}
+
+                {activeTab === "trash" && isOwner && (
+                    <TrashTab uid={user.uid} displayName={user.displayName} />
                 )}
 
                 <div className="mt-6">
@@ -285,8 +613,16 @@ function InfoRow({
             </div>
             <div>
                 <p className="text-[11px] uppercase tracking-widest font-bold text-sheet-muted mb-0.5">{label}</p>
-                <p className="text-sm font-semibold text-sheet-text">{value}</p>
+                <p className="text-sm font-semibold text-sheet-text break-all">{value}</p>
             </div>
         </div>
+    );
+}
+
+export default function AccountPage() {
+    return (
+        <Suspense fallback={<LoadingGrid fullPage size="lg" label="Loading account..." />}>
+            <AccountPageContent />
+        </Suspense>
     );
 }

@@ -8,6 +8,7 @@ interface MeasurementCellProps {
   calculatedValue?: number;
   isActive: boolean;
   disabled?: boolean;
+  requireLongPressToEdit?: boolean;
   onActivate: () => void;
   onChange: (val: number | null) => void;
   onKeyDownNav: (e: React.KeyboardEvent) => void;
@@ -21,6 +22,7 @@ function MeasurementCellComponent({
   calculatedValue = 0,
   isActive,
   disabled = false,
+  requireLongPressToEdit = false,
   onActivate,
   onChange,
   onKeyDownNav,
@@ -32,6 +34,7 @@ function MeasurementCellComponent({
   const inputRef = useRef<HTMLInputElement>(null);
   const cellRef = useRef<HTMLDivElement>(null);
   const pendingInputValueRef = useRef<string | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (editing) {
@@ -68,7 +71,7 @@ function MeasurementCellComponent({
       }
       setEditing(true);
     },
-    [isCalculated]
+    [isCalculated, disabled]
   );
 
   const commitEdit = useCallback(() => {
@@ -97,13 +100,21 @@ function MeasurementCellComponent({
       if (isActive && !isCalculated && !disabled) {
         if (e.key === "Enter") {
           e.preventDefault();
-          startEditing();
+          if (!requireLongPressToEdit) {
+            startEditing();
+          } else {
+            onKeyDownNav(e);
+          }
         } else if (e.key === "Delete" || e.key === "Backspace") {
           e.preventDefault();
-          onChange(null);
+          if (!requireLongPressToEdit) {
+            onChange(null);
+          }
         } else if (/^[0-9.]$/.test(e.key)) {
           e.preventDefault();
-          startEditing(e.key);
+          if (!requireLongPressToEdit) {
+            startEditing(e.key);
+          }
         } else {
           onKeyDownNav(e);
         }
@@ -118,14 +129,31 @@ function MeasurementCellComponent({
       onActivate();
       return;
     }
-    if (!editing && !isCalculated && !disabled) {
+    if (!editing && !isCalculated && !disabled && !requireLongPressToEdit) {
       startEditing();
     }
-  }, [isActive, onActivate, editing, isCalculated, disabled, startEditing]);
+  }, [isActive, onActivate, editing, isCalculated, disabled, requireLongPressToEdit, startEditing]);
 
   const handleDoubleClick = useCallback(() => {
-    if (!disabled) startEditing();
-  }, [disabled, startEditing]);
+    if (!disabled && !requireLongPressToEdit) startEditing();
+  }, [disabled, requireLongPressToEdit, startEditing]);
+
+  // Long press handling (for Customer S.No cells)
+  const handleTouchStart = useCallback(() => {
+    if (requireLongPressToEdit && !disabled && !isCalculated) {
+      longPressTimerRef.current = setTimeout(() => {
+        onActivate();
+        startEditing();
+      }, 500);
+    }
+  }, [requireLongPressToEdit, disabled, isCalculated, onActivate, startEditing]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (autoEdit && isActive && !editing && !isCalculated && !disabled) {
@@ -149,6 +177,11 @@ function MeasurementCellComponent({
       onClick={handleActivateClick}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleTouchStart}
+      onMouseUp={handleTouchEnd}
+      onMouseLeave={handleTouchEnd}
       className={`relative h-9 px-3 flex items-center justify-end text-xs font-mono border-r border-b border-sheet-border select-none transition-colors outline-none ${
         isCalculated
           ? "bg-slate-100/70 dark:bg-slate-800/40 text-emerald-600 font-bold cursor-not-allowed"
@@ -158,6 +191,7 @@ function MeasurementCellComponent({
           ? "ring-2 ring-emerald-500 z-10 bg-emerald-50/50"
           : ""
       }`}
+      title={requireLongPressToEdit ? "Long press to edit S.No" : undefined}
     >
       {editing ? (
         <input

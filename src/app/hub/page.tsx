@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, UserCircle, X, User } from "lucide-react";
+import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, UserCircle, X, User, Trash2 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -89,6 +89,13 @@ export default function AppHub() {
                 <span className="font-medium">Friends</span>
                 <span className="ml-auto text-[10px] font-bold text-red-500">{incomingCount > 0 ? incomingCount : ""}</span>
               </Link>
+              {user?.accountType === "owner" && (
+                <Link href="/hub/account?tab=trash" onClick={() => setDropdownOpen(false)}
+                  className="w-full flex items-center space-x-2 px-4 py-3 hover:bg-amber-50 text-sm text-amber-700 transition-colors group">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center text-amber-600"><Trash2 size={12} /></div>
+                  <span className="font-medium">Deleted Sheets</span>
+                </Link>
+              )}
               <div className="h-px bg-sheet-border mx-3" />
               <button onClick={handleSignOut}
                 className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 text-sm text-red-500 transition-colors">

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import type { LocationType, MeasurementRow, WorkerPermissions } from "@/types";
+import type { LocationType, PersonType, MeasurementRow, WorkerPermissions } from "@/types";
 import { MeasurementCell } from "./MeasurementCell";
 import { calculateRowResult, calculatePersonTotal } from "@/lib/measurementExport";
 import { Plus, Trash2, MessageSquare, X, Check, AlertCircle } from "lucide-react";
 
 interface MeasurementGridProps {
   locationType: LocationType;
+  personType?: PersonType;
   startingSerialNumber?: number;
   rows: MeasurementRow[];
   onChangeRows: (rows: MeasurementRow[]) => void;
@@ -19,6 +20,7 @@ interface MeasurementGridProps {
 
 export function MeasurementGrid({
   locationType,
+  personType = "worker",
   startingSerialNumber = 1,
   rows,
   onChangeRows,
@@ -33,6 +35,8 @@ export function MeasurementGrid({
   const [pendingEdit, setPendingEdit] = useState<{ rowIdx: number; colKey: string } | null>(
     autoFocusFirstCell ? { rowIdx: 0, colKey: "A" } : null
   );
+
+  const isCustomerSheet = personType === "customer";
 
   // Remark Modal state
   const [editingRemarkRowIdx, setEditingRemarkRowIdx] = useState<number | null>(null);
@@ -82,13 +86,18 @@ export function MeasurementGrid({
     }
   }, [rows.length, startingSerialNumber, onChangeRows]);
 
-  // Helper to sort rows ascending by serialNumber, preserving row data integrity
-  const sortAndNotify = (updatedRows: MeasurementRow[]) => {
-    // Sort ascending by serialNumber
-    const sorted = [...updatedRows].sort((a, b) => a.serialNumber - b.serialNumber);
-    // Re-index rowNumber
-    const reindexed = sorted.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
-    onChangeRows(reindexed);
+  // Helper to handle rows update.
+  // For Worker sheets: auto-sort ascending by serialNumber.
+  // For Customer sheets: DO NOT auto-sort by serialNumber (fixed order as assigned).
+  const notifyRowsChange = (updatedRows: MeasurementRow[]) => {
+    if (isCustomerSheet) {
+      const reindexed = updatedRows.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
+      onChangeRows(reindexed);
+    } else {
+      const sorted = [...updatedRows].sort((a, b) => a.serialNumber - b.serialNumber);
+      const reindexed = sorted.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
+      onChangeRows(reindexed);
+    }
   };
 
   const addRow = useCallback(() => {
@@ -105,16 +114,16 @@ export function MeasurementGrid({
       E: null,
       remark: "",
     };
-    sortAndNotify([...rows, newRow]);
-  }, [rows, startingSerialNumber, canAddRows]);
+    notifyRowsChange([...rows, newRow]);
+  }, [rows, startingSerialNumber, canAddRows, isCustomerSheet]);
 
   const deleteRow = useCallback(
     (index: number) => {
       if (!canDeleteRows || rows.length <= 1) return;
       const updated = rows.filter((_, i) => i !== index);
-      sortAndNotify(updated);
+      notifyRowsChange(updated);
     },
-    [rows, canDeleteRows]
+    [rows, canDeleteRows, isCustomerSheet]
   );
 
   const updateCellData = useCallback(
@@ -130,7 +139,7 @@ export function MeasurementGrid({
           return;
         }
         const updated = rows.map((r, i) => (i === rowIdx ? { ...r, serialNumber: newSno } : r));
-        sortAndNotify(updated);
+        notifyRowsChange(updated);
         return;
       }
 
@@ -146,7 +155,7 @@ export function MeasurementGrid({
       });
       onChangeRows(updated);
     },
-    [rows, canEditSerial, canEditMeasurements, startingSerialNumber, onChangeRows]
+    [rows, canEditSerial, canEditMeasurements, startingSerialNumber, onChangeRows, isCustomerSheet]
   );
 
   const saveRemark = () => {
@@ -167,22 +176,16 @@ export function MeasurementGrid({
       if (e.key === "Enter") {
         e.preventDefault();
         shouldAutoEdit = true;
-        if (isLocal) {
-          if (colKey === "SNO") targetColKey = "A";
-          else if (colKey === "A") targetColKey = "B";
-          else {
-            targetColKey = "SNO";
-            targetRow = rowIdx + 1;
-          }
+        // Requirement 4: Pressing Enter on Length (A) moves to next row's Length cell.
+        // Pressing Enter on Height (B) moves to next row's Height cell.
+        if (colKey === "A" || colKey === "B" || colKey === "C" || colKey === "D") {
+          targetColKey = colKey;
+          targetRow = rowIdx + 1;
+        } else if (colKey === "SNO") {
+          targetColKey = "A";
         } else {
-          if (colKey === "SNO") targetColKey = "A";
-          else if (colKey === "A") targetColKey = "B";
-          else if (colKey === "B") targetColKey = "C";
-          else if (colKey === "C") targetColKey = "D";
-          else {
-            targetColKey = "SNO";
-            targetRow = rowIdx + 1;
-          }
+          targetColKey = "A";
+          targetRow = rowIdx + 1;
         }
       } else if (e.key === "Tab") {
         e.preventDefault();
@@ -192,7 +195,7 @@ export function MeasurementGrid({
             if (colKey === "SNO") targetColKey = "A";
             else if (colKey === "A") targetColKey = "B";
             else {
-              targetColKey = "SNO";
+              targetColKey = "A";
               targetRow = rowIdx + 1;
             }
           } else {
@@ -201,7 +204,7 @@ export function MeasurementGrid({
             else if (colKey === "B") targetColKey = "C";
             else if (colKey === "C") targetColKey = "D";
             else {
-              targetColKey = "SNO";
+              targetColKey = "A";
               targetRow = rowIdx + 1;
             }
           }
@@ -278,6 +281,7 @@ export function MeasurementGrid({
                             value={row.serialNumber}
                             isActive={isActive}
                             disabled={!canEditSerial}
+                            requireLongPressToEdit={isCustomerSheet}
                             autoEdit={isAutoEdit}
                             onAutoEditDone={() => setPendingEdit(null)}
                             onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}
