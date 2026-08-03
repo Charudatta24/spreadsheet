@@ -257,7 +257,6 @@ function MeasurementDashboardContent() {
   // Create new Sheet
   const handleCreateSheet = async () => {
     if (!user || !isFormValid || isCreating) return;
-    setIsCreating(true);
 
     const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
@@ -269,6 +268,8 @@ function MeasurementDashboardContent() {
         : 3;
     if (category === "cutting" && machinesValue === null) return;
     const safeMachinesValue = machinesValue ?? 3;
+
+    setIsCreating(true);
 
     // Build initial rows with correct serial numbers starting at 1
     const buildRows = (startSno: number) =>
@@ -285,6 +286,8 @@ function MeasurementDashboardContent() {
 
     let people: PersonMeasurement[];
     let participantIds: string[] = [user.uid];
+    const np2 = typeof numPeople === "number" ? numPeople : 0;
+    const chosenPeople = selectedPeople.slice(0, np2).filter((p) => p.userId && p.name);
 
     if (category === "cutting") {
       // Requirement 1: Create N machine tabs (Machine 1, Machine 2, ... Machine N)
@@ -301,14 +304,11 @@ function MeasurementDashboardContent() {
         },
       }));
       // Only add invited people who were actually selected
-      const np2 = typeof numPeople === "number" ? numPeople : 0;
-      const chosenPeople = selectedPeople.slice(0, np2).filter((p) => p.userId && p.name);
       const invitedIds = chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id));
       participantIds = Array.from(new Set([user.uid, ...invitedIds]));
     } else if (effectiveSheetType === "private") {
       people = [{ name: singleName.trim(), rows: buildRows(sno) }];
     } else {
-      const chosenPeople = selectedPeople.slice(0, np);
       people = chosenPeople.map((p) => ({
         name: p.name,
         userId: p.userId,
@@ -341,7 +341,7 @@ function MeasurementDashboardContent() {
 
     const docData = {
       userId: user.uid,
-      creatorName: user.displayName,
+      creatorName: user.displayName || user.email || "Unknown",
       title: `${titleName} Measurements`,
       date: formDate,
       dateISO,
@@ -362,8 +362,8 @@ function MeasurementDashboardContent() {
         ? {
             cuttingData: {
               numMachines: safeMachinesValue,
-              numPolishes: Math.max(1, people.length),
-              polishes: people.map((p) => ({ userId: p.userId, name: p.name })),
+              numPolishes: chosenPeople.length,
+              polishes: chosenPeople.map((p) => ({ userId: p.userId || "", name: p.name || "" })),
               machines: Array.from({ length: safeMachinesValue }, (_, i) => ({
                 id: `machine_${i + 1}`,
                 name: `Machine ${i + 1}`,
