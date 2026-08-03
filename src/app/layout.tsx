@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppBootstrap } from "@/components/auth/AppBootstrap";
 import { NamePromptModal } from "@/components/auth/NamePromptModal";
+import { AccountTypePromptModal } from "@/components/auth/AccountTypePromptModal";
 
 export const metadata: Metadata = {
   title: "CollabSheet",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <AppBootstrap>
           {children}
           <NamePromptModal />
+          <AccountTypePromptModal />
         </AppBootstrap>
       </body>
     </html>

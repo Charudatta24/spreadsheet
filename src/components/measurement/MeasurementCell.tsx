@@ -7,6 +7,7 @@ interface MeasurementCellProps {
   isCalculated?: boolean;
   calculatedValue?: number;
   isActive: boolean;
+  disabled?: boolean;
   onActivate: () => void;
   onChange: (val: number | null) => void;
   onKeyDownNav: (e: React.KeyboardEvent) => void;
@@ -19,6 +20,7 @@ function MeasurementCellComponent({
   isCalculated = false,
   calculatedValue = 0,
   isActive,
+  disabled = false,
   onActivate,
   onChange,
   onKeyDownNav,
@@ -58,7 +60,7 @@ function MeasurementCellComponent({
   // Activate editing on double click or pressing Enter/typing when active
   const startEditing = useCallback(
     (initialValue?: string) => {
-      if (isCalculated) return;
+      if (isCalculated || disabled) return;
       if (typeof initialValue === "string") {
         pendingInputValueRef.current = (
           pendingInputValueRef.current ?? ""
@@ -92,7 +94,7 @@ function MeasurementCellComponent({
         setEditing(false);
       }
     } else {
-      if (isActive && !isCalculated) {
+      if (isActive && !isCalculated && !disabled) {
         if (e.key === "Enter") {
           e.preventDefault();
           startEditing();
@@ -105,7 +107,7 @@ function MeasurementCellComponent({
         } else {
           onKeyDownNav(e);
         }
-      } else if (isActive && isCalculated) {
+      } else if (isActive && (isCalculated || disabled)) {
         onKeyDownNav(e);
       }
     }
@@ -116,21 +118,21 @@ function MeasurementCellComponent({
       onActivate();
       return;
     }
-    if (!editing && !isCalculated) {
+    if (!editing && !isCalculated && !disabled) {
       startEditing();
     }
-  }, [isActive, onActivate, editing, isCalculated, startEditing]);
+  }, [isActive, onActivate, editing, isCalculated, disabled, startEditing]);
 
   const handleDoubleClick = useCallback(() => {
-    startEditing();
-  }, [startEditing]);
+    if (!disabled) startEditing();
+  }, [disabled, startEditing]);
 
   useEffect(() => {
-    if (autoEdit && isActive && !editing && !isCalculated) {
+    if (autoEdit && isActive && !editing && !isCalculated && !disabled) {
       startEditing();
       onAutoEditDone?.();
     }
-  }, [autoEdit, isActive, editing, isCalculated, startEditing, onAutoEditDone]);
+  }, [autoEdit, isActive, editing, isCalculated, disabled, startEditing, onAutoEditDone]);
 
   const displayVal = isCalculated
     ? calculatedValue > 0

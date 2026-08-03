@@ -103,25 +103,29 @@ export default function AppHub() {
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold mb-3 tracking-tight text-sheet-text">Choose your workspace</h1>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/dashboard"
-            className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-sheet-accent/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><FileSpreadsheet size={120} /></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><FileSpreadsheet size={28} /></div>
-              <h2 className="text-xl font-bold mb-2 text-sheet-text">Spreadsheets</h2>
-            </div>
-            <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Enter Workspace</span><ArrowRight size={16} /></div>
-          </Link>
-          <Link href="/chatbox"
-            className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-sheet-accent/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><MessageSquare size={120} /></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><MessageSquare size={28} /></div>
-              <h2 className="text-xl font-bold mb-2 text-sheet-text">Chatbox</h2>
-            </div>
-            <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Chat</span><ArrowRight size={16} /></div>
-          </Link>
+        <div className={`grid grid-cols-1 ${user?.accountType === "non-owner" ? "max-w-md mx-auto" : "md:grid-cols-3"} gap-6`}>
+          {user?.accountType !== "non-owner" && (
+            <>
+              <Link href="/dashboard"
+                className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-sheet-accent/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><FileSpreadsheet size={120} /></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><FileSpreadsheet size={28} /></div>
+                  <h2 className="text-xl font-bold mb-2 text-sheet-text">Spreadsheets</h2>
+                </div>
+                <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Enter Workspace</span><ArrowRight size={16} /></div>
+              </Link>
+              <Link href="/chatbox"
+                className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-sheet-accent/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><MessageSquare size={120} /></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><MessageSquare size={28} /></div>
+                  <h2 className="text-xl font-bold mb-2 text-sheet-text">Chatbox</h2>
+                </div>
+                <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Chat</span><ArrowRight size={16} /></div>
+              </Link>
+            </>
+          )}
           <div
             onClick={() => setShowMeasurementChoice(true)}
             className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-emerald-500/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden cursor-pointer">

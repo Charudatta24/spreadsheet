@@ -8,7 +8,7 @@ import { getUserProfile } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/types";
 
 export function useAuthInit(): void {
-  const { setUser, setInitialized, setRequiresName } = useAuthStore();
+  const { setUser, setInitialized, setRequiresName, setRequiresAccountType } = useAuthStore();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -38,29 +38,37 @@ export function useAuthInit(): void {
           color: colorForUid(firebaseUser.uid),
           isAnonymous: firebaseUser.isAnonymous,
           nickname: savedProfile?.nickname,
+          accountType: savedProfile?.accountType,
         };
 
         setUser(baseUser);
         
         if (!firebaseUser.isAnonymous) {
-          // If the user doesn't have a profile in DB yet, ask for name
           if (!savedProfile || !savedProfile.displayName) {
             setRequiresName(true);
           } else {
             setRequiresName(false);
           }
+
+          if (!savedProfile || !savedProfile.accountType) {
+            setRequiresAccountType(true);
+          } else {
+            setRequiresAccountType(false);
+          }
         } else {
           setRequiresName(false);
+          setRequiresAccountType(false);
         }
         
         setInitialized(true);
       } else {
         setUser(null);
         setRequiresName(false);
+        setRequiresAccountType(false);
         setInitialized(true);
       }
     });
 
     return unsub;
-  }, [setUser, setInitialized, setRequiresName]);
+  }, [setUser, setInitialized, setRequiresName, setRequiresAccountType]);
 }

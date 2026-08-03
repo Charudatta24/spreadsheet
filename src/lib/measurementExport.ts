@@ -57,35 +57,37 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
   sheet.people.forEach((person, idx) => {
     const sheetData: (string | number)[][] = [];
 
-    // Table Headers & Rows — clean column names, no metadata
+    // Table Headers & Rows — clean column names, S.No., Remark, no metadata
     if (sheet.locationType === "local") {
-      sheetData.push(["No.", "Length", "Height", "Calculated"]);
+      sheetData.push(["S.No.", "Length", "Height", "Calculated", "Remark"]);
       person.rows.forEach((r, i) => {
         const calcVal = calculateRowResult("local", r.A, r.B, r.C);
         sheetData.push([
-          i + 1,
+          r.serialNumber ?? (i + 1),
           r.A ?? "",
           r.B ?? "",
           calcVal > 0 ? calcVal : "",
+          r.remark ?? "",
         ]);
       });
       const pTotal = calculatePersonTotal("local", person.rows);
-      sheetData.push(["", "", "Total:", pTotal]);
+      sheetData.push(["", "", "Total:", pTotal, ""]);
     } else {
-      sheetData.push(["No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated"]);
+      sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated", "Remark"]);
       person.rows.forEach((r, i) => {
         const calcVal = calculateRowResult("national", r.A, r.B, r.C);
         sheetData.push([
-          i + 1,
+          r.serialNumber ?? (i + 1),
           r.A ?? "",
           r.B ?? "",
           r.C ?? "",
           r.D ?? "",
           calcVal > 0 ? calcVal : "",
+          r.remark ?? "",
         ]);
       });
       const pTotal = calculatePersonTotal("national", person.rows);
-      sheetData.push(["", "", "", "", "Total:", pTotal]);
+      sheetData.push(["", "", "", "", "Total:", pTotal, ""]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
@@ -93,8 +95,8 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
     // Set column widths
     const colWidths =
       sheet.locationType === "local"
-        ? [{ wch: 6 }, { wch: 14 }, { wch: 14 }, { wch: 16 }]
-        : [{ wch: 6 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }];
+        ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 24 }]
+        : [{ wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }];
     ws["!cols"] = colWidths;
 
     const sheetTabName = sanitizeSheetName(person.name || `Person ${idx + 1}`);

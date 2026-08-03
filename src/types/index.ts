@@ -157,6 +157,8 @@ export type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+export type AccountType = "owner" | "non-owner";
+
 export type AppUser = {
   uid: string;
   displayName: string;
@@ -169,6 +171,8 @@ export type AppUser = {
   nickname?: string;
   /** True if the user needs to provide their name for the first time */
   requiresName?: boolean;
+  /** Account type: owner or non-owner */
+  accountType?: AccountType;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────
@@ -184,20 +188,39 @@ export type PersonType = "worker" | "customer";
 export type LocationType = "local" | "national";
 export type SheetType = "private" | "multiple";
 
+export type WorkerPermissions = {
+  canView: boolean;
+  canModifyMeasurements: boolean;
+  canModifySerialNumbers: boolean;
+  canModifyRemarks: boolean;
+  canAddRows: boolean;
+  canDeleteRows: boolean;
+};
+
 export type MeasurementRow = {
   rowNumber: number;
+  serialNumber: number;
   A: number | null; // Length
   B: number | null; // Height (Local) or Length in CM (National)
   C: number | null; // Calculated Value (Local) or Height (National)
   D?: number | null; // Height in CM (National)
   E?: number | null; // Calculated Value (National)
+  remark?: string;
 };
 
 export type PersonMeasurement = {
   name: string;
   userId?: string;
   status?: "pending" | "accepted" | "declined";
+  permissions?: WorkerPermissions;
   rows: MeasurementRow[];
+};
+
+export type SheetActivityLog = {
+  action: string;
+  userId: string;
+  userName: string;
+  timestamp: number;
 };
 
 export type MeasurementSheet = {
@@ -207,6 +230,7 @@ export type MeasurementSheet = {
   date: string;
   dateISO?: string;
   dateTimestamp?: any;
+  startingSerialNumber: number;
   personType: PersonType;
   locationType: LocationType;
   sheetType: SheetType;
@@ -214,6 +238,9 @@ export type MeasurementSheet = {
   participantIds?: string[];
   total: number;
   favorite?: boolean;
+  lastUpdatedBy?: string;
+  lastUpdatedAt?: any;
+  history?: SheetActivityLog[];
   createdAt: any;
   updatedAt: any;
 };

@@ -1,23 +1,31 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import type { LocationType, MeasurementRow } from "@/types";
+import type { LocationType, MeasurementRow, WorkerPermissions } from "@/types";
 import { MeasurementCell } from "./MeasurementCell";
 import { calculateRowResult, calculatePersonTotal } from "@/lib/measurementExport";
-import { Plus, Trash2, Calculator } from "lucide-react";
+import { Plus, Trash2, MessageSquare, X, Check, AlertCircle } from "lucide-react";
 
 interface MeasurementGridProps {
   locationType: LocationType;
+  startingSerialNumber?: number;
   rows: MeasurementRow[];
   onChangeRows: (rows: MeasurementRow[]) => void;
   autoFocusFirstCell?: boolean;
+  isOwner?: boolean;
+  permissions?: WorkerPermissions;
+  isReadonlyDay?: boolean;
 }
 
 export function MeasurementGrid({
   locationType,
+  startingSerialNumber = 1,
   rows,
   onChangeRows,
   autoFocusFirstCell = false,
+  isOwner = true,
+  permissions,
+  isReadonlyDay = false,
 }: MeasurementGridProps) {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colKey: string } | null>(
     { rowIdx: 0, colKey: "A" }
@@ -26,62 +34,107 @@ export function MeasurementGrid({
     autoFocusFirstCell ? { rowIdx: 0, colKey: "A" } : null
   );
 
+  // Remark Modal state
+  const [editingRemarkRowIdx, setEditingRemarkRowIdx] = useState<number | null>(null);
+  const [remarkInput, setRemarkInput] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   const isLocal = locationType === "local";
   const columns = isLocal
     ? [
+        { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
         { key: "A", label: "Length", isCalc: false },
         { key: "B", label: "Height", isCalc: false },
         { key: "C", label: "Calculated", isCalc: true },
+        { key: "REMARK", label: "Remark", isCalc: false, isRemark: true },
       ]
     : [
+        { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
         { key: "A", label: "Length", isCalc: false },
         { key: "B", label: "Length (CM)", isCalc: false },
         { key: "C", label: "Height", isCalc: false },
         { key: "D", label: "Height (CM)", isCalc: false },
         { key: "E", label: "Calculated", isCalc: true },
+        { key: "REMARK", label: "Remark", isCalc: false, isRemark: true },
       ];
 
-  // Ensure there are at least 5 rows initialized
+  // Effective permissions
+  const canEditSerial = isOwner || (permissions?.canModifySerialNumbers && !isReadonlyDay);
+  const canEditMeasurements = isOwner || (permissions?.canModifyMeasurements && !isReadonlyDay);
+  const canEditRemarks = isOwner || (permissions?.canModifyRemarks && !isReadonlyDay);
+  const canAddRows = isOwner || (permissions?.canAddRows && !isReadonlyDay);
+  const canDeleteRows = isOwner || (permissions?.canDeleteRows && !isReadonlyDay);
+
+  // Ensure initial rows have valid serialNumbers starting at startingSerialNumber
   useEffect(() => {
     if (rows.length === 0) {
       const initial: MeasurementRow[] = Array.from({ length: 5 }, (_, i) => ({
         rowNumber: i + 1,
+        serialNumber: startingSerialNumber + i,
         A: null,
         B: null,
         C: null,
         D: null,
         E: null,
+        remark: "",
       }));
       onChangeRows(initial);
     }
-  }, [rows.length, onChangeRows]);
+  }, [rows.length, startingSerialNumber, onChangeRows]);
+
+  // Helper to sort rows ascending by serialNumber, preserving row data integrity
+  const sortAndNotify = (updatedRows: MeasurementRow[]) => {
+    // Sort ascending by serialNumber
+    const sorted = [...updatedRows].sort((a, b) => a.serialNumber - b.serialNumber);
+    // Re-index rowNumber
+    const reindexed = sorted.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
+    onChangeRows(reindexed);
+  };
 
   const addRow = useCallback(() => {
-    const newRowNumber = rows.length + 1;
+    if (!canAddRows) return;
+    const maxSno = rows.reduce((max, r) => Math.max(max, r.serialNumber ?? 0), startingSerialNumber - 1);
+    const newSno = Math.max(maxSno + 1, startingSerialNumber);
     const newRow: MeasurementRow = {
-      rowNumber: newRowNumber,
+      rowNumber: rows.length + 1,
+      serialNumber: newSno,
       A: null,
       B: null,
       C: null,
       D: null,
       E: null,
+      remark: "",
     };
-    onChangeRows([...rows, newRow]);
-  }, [rows, onChangeRows]);
+    sortAndNotify([...rows, newRow]);
+  }, [rows, startingSerialNumber, canAddRows]);
 
   const deleteRow = useCallback(
     (index: number) => {
-      if (rows.length <= 1) return;
-      const updated = rows
-        .filter((_, i) => i !== index)
-        .map((r, i) => ({ ...r, rowNumber: i + 1 }));
-      onChangeRows(updated);
+      if (!canDeleteRows || rows.length <= 1) return;
+      const updated = rows.filter((_, i) => i !== index);
+      sortAndNotify(updated);
     },
-    [rows, onChangeRows]
+    [rows, canDeleteRows]
   );
 
   const updateCellData = useCallback(
     (rowIdx: number, colKey: string, val: number | null) => {
+      if (colKey === "SNO") {
+        if (!canEditSerial) return;
+        const newSno = val == null ? startingSerialNumber : Math.floor(val);
+        // Duplicate check
+        const isDuplicate = rows.some((r, i) => i !== rowIdx && r.serialNumber === newSno);
+        if (isDuplicate) {
+          setErrorMessage(`Serial number ${newSno} already exists!`);
+          setTimeout(() => setErrorMessage(""), 3000);
+          return;
+        }
+        const updated = rows.map((r, i) => (i === rowIdx ? { ...r, serialNumber: newSno } : r));
+        sortAndNotify(updated);
+        return;
+      }
+
+      if (!canEditMeasurements) return;
       const updated = rows.map((r, i) => {
         if (i !== rowIdx) return r;
         const copy = { ...r };
@@ -93,69 +146,62 @@ export function MeasurementGrid({
       });
       onChangeRows(updated);
     },
-    [rows, onChangeRows]
+    [rows, canEditSerial, canEditMeasurements, startingSerialNumber, onChangeRows]
   );
 
-  // Keyboard navigation logic
+  const saveRemark = () => {
+    if (editingRemarkRowIdx === null) return;
+    const updated = rows.map((r, i) => (i === editingRemarkRowIdx ? { ...r, remark: remarkInput.trim() } : r));
+    onChangeRows(updated);
+    setEditingRemarkRowIdx(null);
+    setRemarkInput("");
+  };
+
+  // Keyboard navigation
   const handleCellNav = useCallback(
     (rowIdx: number, colKey: string, e: React.KeyboardEvent) => {
       let targetRow = rowIdx;
       let targetColKey = colKey;
-
       let shouldAutoEdit = false;
+
       if (e.key === "Enter") {
         e.preventDefault();
         shouldAutoEdit = true;
         if (isLocal) {
-          // A -> B -> Next Row A
-          if (colKey === "A") {
-            targetColKey = "B";
-          } else {
-            targetColKey = "A";
+          if (colKey === "SNO") targetColKey = "A";
+          else if (colKey === "A") targetColKey = "B";
+          else {
+            targetColKey = "SNO";
             targetRow = rowIdx + 1;
           }
         } else {
-          // A -> B -> C -> D -> Next Row A
-          if (colKey === "A") targetColKey = "B";
+          if (colKey === "SNO") targetColKey = "A";
+          else if (colKey === "A") targetColKey = "B";
           else if (colKey === "B") targetColKey = "C";
           else if (colKey === "C") targetColKey = "D";
           else {
-            targetColKey = "A";
+            targetColKey = "SNO";
             targetRow = rowIdx + 1;
           }
         }
       } else if (e.key === "Tab") {
         e.preventDefault();
         shouldAutoEdit = !e.shiftKey;
-        if (e.shiftKey) {
+        if (!e.shiftKey) {
           if (isLocal) {
-            if (colKey === "B") targetColKey = "A";
-            else if (colKey === "A" && rowIdx > 0) {
-              targetRow = rowIdx - 1;
-              targetColKey = "B";
-            }
-          } else {
-            if (colKey === "D") targetColKey = "C";
-            else if (colKey === "C") targetColKey = "B";
-            else if (colKey === "B") targetColKey = "A";
-            else if (colKey === "A" && rowIdx > 0) {
-              targetRow = rowIdx - 1;
-              targetColKey = "D";
-            }
-          }
-        } else {
-          if (isLocal) {
-            if (colKey === "A") targetColKey = "B";
+            if (colKey === "SNO") targetColKey = "A";
+            else if (colKey === "A") targetColKey = "B";
             else {
-              targetColKey = "A";
+              targetColKey = "SNO";
               targetRow = rowIdx + 1;
             }
           } else {
-            if (colKey === "A") targetColKey = "B";
+            if (colKey === "SNO") targetColKey = "A";
+            else if (colKey === "A") targetColKey = "B";
             else if (colKey === "B") targetColKey = "C";
             else if (colKey === "C") targetColKey = "D";
             else {
-              targetColKey = "A";
+              targetColKey = "SNO";
               targetRow = rowIdx + 1;
             }
           }
@@ -166,24 +212,9 @@ export function MeasurementGrid({
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         targetRow = Math.max(0, rowIdx - 1);
-      } else if (e.key === "ArrowRight") {
-        if (isLocal && colKey === "A") targetColKey = "B";
-        else if (!isLocal) {
-          if (colKey === "A") targetColKey = "B";
-          else if (colKey === "B") targetColKey = "C";
-          else if (colKey === "C") targetColKey = "D";
-        }
-      } else if (e.key === "ArrowLeft") {
-        if (isLocal && colKey === "B") targetColKey = "A";
-        else if (!isLocal) {
-          if (colKey === "D") targetColKey = "C";
-          else if (colKey === "C") targetColKey = "B";
-          else if (colKey === "B") targetColKey = "A";
-        }
       }
 
-      // Auto add row if navigating beyond last row
-      if (targetRow >= rows.length) {
+      if (targetRow >= rows.length && canAddRows) {
         addRow();
       }
 
@@ -192,32 +223,39 @@ export function MeasurementGrid({
         setPendingEdit({ rowIdx: targetRow, colKey: targetColKey });
       }
     },
-    [isLocal, rows.length, addRow]
+    [isLocal, rows.length, addRow, canAddRows]
   );
 
   const totalVal = calculatePersonTotal(locationType, rows);
 
   return (
     <div className="w-full flex flex-col bg-sheet-surface rounded-xl border border-sheet-border overflow-hidden shadow-sm">
-      {/* Grid Table Container — scrollable on mobile */}
+      {errorMessage && (
+        <div className="bg-red-50 text-red-600 text-xs px-3 py-2 flex items-center gap-2 border-b border-red-200">
+          <AlertCircle size={14} />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Grid Table Container */}
       <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
-        <table className="min-w-[320px] w-full border-collapse text-xs">
+        <table className="min-w-[340px] w-full border-collapse text-xs">
           <thead>
             <tr className="bg-sheet-header text-sheet-text border-b-2 border-sheet-border">
-              <th className="w-8 sm:w-12 px-1 sm:px-2 py-2 text-center font-bold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs">
+              <th className="w-8 sm:w-10 px-1 py-2 text-center font-bold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs">
                 #
               </th>
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`px-2 sm:px-3 py-2 text-right font-bold border-r border-sheet-border text-[10px] sm:text-xs ${
+                  className={`px-2 sm:px-3 py-2 ${c.isRemark ? "text-left" : "text-right"} font-bold border-r border-sheet-border text-[10px] sm:text-xs ${
                     c.isCalc ? "text-emerald-600 bg-emerald-50/40" : ""
                   }`}
                 >
                   {c.label}
                 </th>
               ))}
-              <th className="w-8 px-1 py-2"></th>
+              {canDeleteRows && <th className="w-8 px-1 py-2"></th>}
             </tr>
           </thead>
           <tbody>
@@ -225,18 +263,30 @@ export function MeasurementGrid({
               const rowResult = calculateRowResult(locationType, row.A, row.B, row.C);
 
               return (
-                <tr
-                  key={rIdx}
-                  className="hover:bg-slate-50/50 transition-colors group"
-                >
-                  <td className="px-1 sm:px-2 py-1 text-center font-mono font-semibold text-slate-400 border-r border-b border-sheet-border bg-slate-50/50 select-none text-[10px] sm:text-xs">
+                <tr key={rIdx} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-1 py-1 text-center font-mono font-semibold text-slate-400 border-r border-b border-sheet-border bg-slate-50/50 select-none text-[10px] sm:text-xs">
                     {rIdx + 1}
                   </td>
                   {columns.map((col) => {
-                    const isActive =
-                      activeCell?.rowIdx === rIdx && activeCell?.colKey === col.key;
-                    const isAutoEdit =
-                      pendingEdit?.rowIdx === rIdx && pendingEdit?.colKey === col.key;
+                    const isActive = activeCell?.rowIdx === rIdx && activeCell?.colKey === col.key;
+                    const isAutoEdit = pendingEdit?.rowIdx === rIdx && pendingEdit?.colKey === col.key;
+
+                    if (col.isSno) {
+                      return (
+                        <td key={col.key} className="p-0">
+                          <MeasurementCell
+                            value={row.serialNumber}
+                            isActive={isActive}
+                            disabled={!canEditSerial}
+                            autoEdit={isAutoEdit}
+                            onAutoEditDone={() => setPendingEdit(null)}
+                            onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}
+                            onChange={(val) => updateCellData(rIdx, col.key, val)}
+                            onKeyDownNav={(e) => handleCellNav(rIdx, col.key, e)}
+                          />
+                        </td>
+                      );
+                    }
 
                     if (col.isCalc) {
                       return (
@@ -246,12 +296,34 @@ export function MeasurementGrid({
                             isCalculated={true}
                             calculatedValue={rowResult}
                             isActive={isActive}
-                            onActivate={() =>
-                              setActiveCell({ rowIdx: rIdx, colKey: col.key })
-                            }
+                            onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}
                             onChange={() => {}}
                             onKeyDownNav={(e) => handleCellNav(rIdx, col.key, e)}
                           />
+                        </td>
+                      );
+                    }
+
+                    if (col.isRemark) {
+                      return (
+                        <td
+                          key={col.key}
+                          onClick={() => {
+                            if (canEditRemarks) {
+                              setEditingRemarkRowIdx(rIdx);
+                              setRemarkInput(row.remark || "");
+                            }
+                          }}
+                          className="px-2 py-1 border-r border-b border-sheet-border cursor-pointer hover:bg-emerald-50/30 text-xs font-mono truncate max-w-[120px] sm:max-w-[180px] text-slate-700"
+                          title={row.remark ? row.remark : canEditRemarks ? "Tap to add remark" : ""}
+                        >
+                          {row.remark ? (
+                            <span>{row.remark}</span>
+                          ) : (
+                            <span className="text-slate-300 italic text-[10px]">
+                              {canEditRemarks ? "+ Add remark" : ""}
+                            </span>
+                          )}
                         </td>
                       );
                     }
@@ -272,26 +344,27 @@ export function MeasurementGrid({
                         <MeasurementCell
                           value={cellVal}
                           isActive={isActive}
+                          disabled={!canEditMeasurements}
                           autoEdit={isAutoEdit}
                           onAutoEditDone={() => setPendingEdit(null)}
-                          onActivate={() =>
-                            setActiveCell({ rowIdx: rIdx, colKey: col.key })
-                          }
+                          onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}
                           onChange={(val) => updateCellData(rIdx, col.key, val)}
                           onKeyDownNav={(e) => handleCellNav(rIdx, col.key, e)}
                         />
                       </td>
                     );
                   })}
-                  <td className="px-1 py-1 text-center border-b border-sheet-border">
-                    <button
-                      onClick={() => deleteRow(rIdx)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 rounded transition-all"
-                      title="Delete Row"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </td>
+                  {canDeleteRows && (
+                    <td className="px-1 py-1 text-center border-b border-sheet-border">
+                      <button
+                        onClick={() => deleteRow(rIdx)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 rounded transition-all"
+                        title="Delete Row"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -300,7 +373,7 @@ export function MeasurementGrid({
             <tr className="bg-slate-50 text-sheet-text border-t border-sheet-border">
               <td className="px-1 sm:px-2 py-2 text-center font-mono font-semibold text-slate-500 border-r border-sheet-border"></td>
               <td
-                colSpan={columns.length - 1}
+                colSpan={columns.length - 2}
                 className="px-2 sm:px-3 py-2 text-right font-semibold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs"
               >
                 TOTAL =
@@ -308,22 +381,71 @@ export function MeasurementGrid({
               <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
                 {totalVal}
               </td>
-              <td className="px-1 py-2 text-center border-sheet-border"></td>
+              <td></td>
+              {canDeleteRows && <td></td>}
             </tr>
           </tfoot>
         </table>
       </div>
 
       {/* Grid Footer Controls */}
-      <div className="p-2 sm:p-3 bg-slate-50 border-t border-sheet-border flex items-center justify-start gap-2">
-        <button
-          onClick={addRow}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
-        >
-          <Plus size={14} />
-          Add Row
-        </button>
-      </div>
+      {canAddRows && (
+        <div className="p-2 sm:p-3 bg-slate-50 border-t border-sheet-border flex items-center justify-start gap-2">
+          <button
+            onClick={addRow}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+          >
+            <Plus size={14} />
+            Add Row
+          </button>
+        </div>
+      )}
+
+      {/* Add / Edit Remark Modal */}
+      {editingRemarkRowIdx !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base text-sheet-text flex items-center gap-2">
+                <MessageSquare size={16} className="text-emerald-600" />
+                Add Remark
+              </h3>
+              <button
+                onClick={() => setEditingRemarkRowIdx(null)}
+                className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={remarkInput}
+              onChange={(e) => setRemarkInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveRemark()}
+              placeholder="e.g. Wall measurement - Room 2"
+              autoFocus
+              className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setEditingRemarkRowIdx(null)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveRemark}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm flex items-center gap-1"
+              >
+                <Check size={14} />
+                Save Remark
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

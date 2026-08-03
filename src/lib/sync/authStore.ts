@@ -7,9 +7,11 @@ interface AuthState {
   user: AppUser | null;
   initialized: boolean;
   requiresName: boolean;
+  requiresAccountType: boolean;
   setUser: (user: AppUser | null) => void;
   setInitialized: (v: boolean) => void;
   setRequiresName: (v: boolean) => void;
+  setRequiresAccountType: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -18,13 +20,19 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       initialized: false,
       requiresName: false,
+      requiresAccountType: false,
       setUser: (user) => set({ user }),
       setInitialized: (initialized) => set({ initialized }),
       setRequiresName: (requiresName) => set({ requiresName }),
+      setRequiresAccountType: (requiresAccountType) => set({ requiresAccountType }),
     }),
     {
       name: "collabsheet-auth",
-      partialize: (state) => ({ user: state.user, requiresName: state.requiresName }),
+      partialize: (state) => ({
+        user: state.user,
+        requiresName: state.requiresName,
+        requiresAccountType: state.requiresAccountType,
+      }),
     }
   )
 );

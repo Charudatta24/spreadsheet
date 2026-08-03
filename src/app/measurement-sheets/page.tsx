@@ -104,6 +104,7 @@ function MeasurementDashboardContent() {
   const [singleName, setSingleName] = useState("");
   const [numPeople, setNumPeople] = useState<number | "">(2);
   const [selectedPeople, setSelectedPeople] = useState<SelectedPerson[]>([{ userId: "", name: "" }, { userId: "", name: "" }]);
+  const [formStartingSerialNumber, setFormStartingSerialNumber] = useState<number>(1);
   const [isCreating, setIsCreating] = useState(false);
 
   // Subscribe to sheets with clean deletion sync
@@ -213,6 +214,7 @@ function MeasurementDashboardContent() {
     setSingleName("");
     setNumPeople(2);
     setSelectedPeople([{ userId: "", name: "" }, { userId: "", name: "" }]);
+    setFormStartingSerialNumber(1);
   };
 
   // Create new Sheet
@@ -221,18 +223,41 @@ function MeasurementDashboardContent() {
     setIsCreating(true);
 
     const np = typeof numPeople === "number" ? numPeople : 1;
+    const sno = formStartingSerialNumber >= 1 ? formStartingSerialNumber : 1;
+
+    // Build initial rows with correct serial numbers starting at sno
+    const buildRows = (startSno: number) =>
+      Array.from({ length: 5 }, (_, i) => ({
+        rowNumber: i + 1,
+        serialNumber: startSno + i,
+        A: null,
+        B: null,
+        C: null,
+        D: null,
+        E: null,
+        remark: "",
+      }));
+
     let people: PersonMeasurement[];
     let participantIds: string[] = [user.uid];
 
     if (effectiveSheetType === "private") {
-      people = [{ name: singleName.trim(), rows: [...EMPTY_ROWS] }];
+      people = [{ name: singleName.trim(), rows: buildRows(sno) }];
     } else {
       const chosenPeople = selectedPeople.slice(0, np);
       people = chosenPeople.map((p) => ({
         name: p.name,
         userId: p.userId,
         status: "pending" as const,
-        rows: [...EMPTY_ROWS],
+        rows: buildRows(sno),
+        permissions: {
+          canView: true,
+          canModifyMeasurements: true,
+          canModifySerialNumbers: false,
+          canModifyRemarks: true,
+          canAddRows: true,
+          canDeleteRows: false,
+        },
       }));
       participantIds = [user.uid, ...chosenPeople.map((p) => p.userId)];
     }
@@ -256,6 +281,7 @@ function MeasurementDashboardContent() {
       personType: formPersonType,
       locationType: effectiveLocationType,
       sheetType: effectiveSheetType,
+      startingSerialNumber: sno,
       people,
       participantIds,
       total: 0,
@@ -835,6 +861,26 @@ function MeasurementDashboardContent() {
                 value={formDate}
                 onChange={(e) => setFormDate(e.target.value)}
                 className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono text-slate-700 outline-none"
+              />
+            </div>
+
+            {/* Starting Serial Number (permanent lock after creation) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                Starting Serial Number
+                <span className="ml-2 text-[10px] font-normal text-slate-400 italic">(locked after creation)</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={formStartingSerialNumber}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1) setFormStartingSerialNumber(v);
+                  else if (e.target.value === "") setFormStartingSerialNumber(1);
+                }}
+                className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
               />
             </div>
 
