@@ -184,7 +184,7 @@ export default function MeasurementSheetEditorPage() {
               {sheet.locationType}
             </span>
             <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
-              {sheet.personType}
+              {sheet.sheetCategory === "cutting" ? "Cutting" : sheet.sheetCategory === "polish" ? "Polish" : sheet.personType}
             </span>
           </div>
         </div>

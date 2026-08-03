@@ -160,17 +160,7 @@ export default function AppHub() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=worker"); }}
-                className="p-5 rounded-2xl border-2 border-sheet-border hover:border-emerald-500 hover:bg-emerald-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
-              >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <User size={24} />
-                </div>
-                <span className="text-sm font-bold text-sheet-text group-hover:text-emerald-600">Worker</span>
-              </button>
-
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
                 onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=customer"); }}
                 className="p-5 rounded-2xl border-2 border-sheet-border hover:border-blue-500 hover:bg-blue-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
@@ -179,6 +169,26 @@ export default function AppHub() {
                   <Users size={24} />
                 </div>
                 <span className="text-sm font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
+              </button>
+
+              <button
+                onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=polish"); }}
+                className="p-5 rounded-2xl border-2 border-sheet-border hover:border-emerald-500 hover:bg-emerald-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <User size={24} />
+                </div>
+                <span className="text-sm font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
+              </button>
+
+              <button
+                onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=cutting"); }}
+                className="p-5 rounded-2xl border-2 border-sheet-border hover:border-indigo-500 hover:bg-indigo-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+              >
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Ruler size={24} />
+                </div>
+                <span className="text-sm font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
               </button>
             </div>
           </div>

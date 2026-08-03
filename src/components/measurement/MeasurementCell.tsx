@@ -87,12 +87,19 @@ function MeasurementCellComponent({
     }
   }, [inputValue, onChange]);
 
+  const finishEditAndAdvance = useCallback(
+    (e: React.KeyboardEvent) => {
+      commitEdit();
+      onKeyDownNav(e);
+    },
+    [commitEdit, onKeyDownNav]
+  );
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (editing) {
-      if (e.key === "Enter" || e.key === "Tab") {
+      if (e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Done" || e.key === "Go" || e.key === "Tab") {
         e.preventDefault();
-        commitEdit();
-        onKeyDownNav(e);
+        finishEditAndAdvance(e);
       } else if (e.key === "Escape") {
         setEditing(false);
       }
@@ -208,7 +215,7 @@ function MeasurementCellComponent({
           }}
           onBlur={commitEdit}
           onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === "Tab" || e.key === "Escape") {
+            if (e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Done" || e.key === "Go" || e.key === "Tab" || e.key === "Escape") {
               handleKeyDown(e);
             }
           }}

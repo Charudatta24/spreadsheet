@@ -185,6 +185,7 @@ export type SelectionRange = {
 // ─── Measurement Sheets ───────────────────────────────────────────────────────
 
 export type PersonType = "worker" | "customer";
+export type SheetCategory = "customer" | "polish" | "cutting";
 export type LocationType = "local" | "national";
 export type SheetType = "private" | "multiple";
 
@@ -259,8 +260,10 @@ export type MeasurementSheet = {
   dateTimestamp?: any;
   startingSerialNumber: number;
   personType: PersonType;
+  sheetCategory?: SheetCategory;
   locationType: LocationType;
   sheetType: SheetType;
+  numSlabs?: number;
   people: PersonMeasurement[];
   participantIds?: string[];
   total: number;

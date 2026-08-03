@@ -44,6 +44,7 @@ import type {
   MeasurementSheet,
   PersonType,
   LocationType,
+  SheetCategory,
   SheetType,
   PersonMeasurement,
 } from "@/types";
@@ -79,7 +80,15 @@ function parseSheetDateISO(dateStr: string): string {
 function MeasurementDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTypeParam = searchParams.get("type") as "worker" | "customer" | null;
+  const activeTypeParam = searchParams.get("type") as string | null;
+  const activeSheetCategory: SheetCategory | null =
+    activeTypeParam === "customer"
+      ? "customer"
+      : activeTypeParam === "cutting"
+      ? "cutting"
+      : activeTypeParam === "polish" || activeTypeParam === "worker"
+      ? "polish"
+      : null;
 
   const { user } = useAuthStore();
 
@@ -112,6 +121,8 @@ function MeasurementDashboardContent() {
   const [numPeople, setNumPeople] = useState<number | "">(2);
   const [selectedPeople, setSelectedPeople] = useState<SelectedPerson[]>([{ userId: "", name: "" }, { userId: "", name: "" }]);
   const [formStartingSerialNumber, setFormStartingSerialNumber] = useState<number>(1);
+  const [formNumSlabs, setFormNumSlabs] = useState("1");
+  const [formNumMachines, setFormNumMachines] = useState<number>(3);
   const [isCreating, setIsCreating] = useState(false);
 
   // Subscribe to sheets with clean deletion sync
@@ -158,14 +169,26 @@ function MeasurementDashboardContent() {
 
   // Sync form defaults when modal opens or activeTypeParam changes
   useEffect(() => {
-    if (activeTypeParam === "worker") {
+    if (activeSheetCategory === "polish") {
       setFormPersonType("worker");
       setFormLocationType("local");
       setFormSheetType("multiple");
-    } else if (activeTypeParam === "customer") {
+      setFormNumSlabs("1");
+      setFormNumMachines(3);
+    } else if (activeSheetCategory === "customer") {
       setFormPersonType("customer");
+      setFormLocationType("local");
+      setFormSheetType("multiple");
+      setFormNumSlabs("1");
+      setFormNumMachines(3);
+    } else if (activeSheetCategory === "cutting") {
+      setFormPersonType("worker");
+      setFormLocationType("local");
+      setFormSheetType("multiple");
+      setFormNumSlabs("1");
+      setFormNumMachines(3);
     }
-  }, [activeTypeParam, showCreateModal]);
+  }, [activeSheetCategory, showCreateModal]);
 
   const handleNumPeopleChange = (valStr: string) => {
     if (valStr === "") {
@@ -215,13 +238,15 @@ function MeasurementDashboardContent() {
 
   const resetForm = () => {
     setFormDate(format(new Date(), "dd-MMM-yyyy"));
-    setFormPersonType(activeTypeParam === "worker" ? "worker" : activeTypeParam === "customer" ? "customer" : null);
-    setFormLocationType(activeTypeParam === "worker" ? "local" : null);
-    setFormSheetType(activeTypeParam === "worker" ? "multiple" : null);
+    setFormPersonType(activeSheetCategory === "customer" ? "customer" : "worker");
+    setFormLocationType(activeSheetCategory === "customer" ? null : "local");
+    setFormSheetType(activeSheetCategory === "customer" ? null : "multiple");
     setSingleName("");
     setNumPeople(2);
     setSelectedPeople([{ userId: "", name: "" }, { userId: "", name: "" }]);
     setFormStartingSerialNumber(1);
+    setFormNumSlabs("1");
+    setFormNumMachines(3);
   };
 
   // Create new Sheet
@@ -229,8 +254,11 @@ function MeasurementDashboardContent() {
     if (!user || !isFormValid || isCreating) return;
     setIsCreating(true);
 
+    const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
     const sno = formStartingSerialNumber >= 1 ? formStartingSerialNumber : 1;
+    const slabsValue = formNumSlabs === "" ? 1 : Math.max(1, parseInt(formNumSlabs, 10) || 1);
+    const machinesValue = formNumMachines >= 1 ? formNumMachines : 3;
 
     // Build initial rows with correct serial numbers starting at sno
     const buildRows = (startSno: number) =>
@@ -272,7 +300,11 @@ function MeasurementDashboardContent() {
     const titleName =
       effectiveSheetType === "private"
         ? singleName.trim()
-        : `${formPersonType === "worker" ? "Workers" : "Customers"} (${people.length})`;
+        : category === "cutting"
+        ? `Cutting (${people.length})`
+        : category === "polish"
+        ? `Polishes (${people.length})`
+        : `Customers (${people.length})`;
 
     const parsedDate = new Date(formDate);
     const dateISO = parseSheetDateISO(formDate);
@@ -285,16 +317,33 @@ function MeasurementDashboardContent() {
       date: formDate,
       dateISO,
       dateTimestamp,
-      personType: formPersonType,
+      personType: category === "customer" ? "customer" : "worker",
+      sheetCategory: category,
       locationType: effectiveLocationType,
       sheetType: effectiveSheetType,
       startingSerialNumber: sno,
+      numSlabs: category === "customer" ? slabsValue : 1,
       people,
       participantIds,
       total: 0,
       favorite: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      ...(category === "cutting"
+        ? {
+            cuttingData: {
+              numMachines: machinesValue,
+              numPolishes: Math.max(1, people.length),
+              polishes: people.map((p) => ({ userId: p.userId, name: p.name })),
+              machines: Array.from({ length: machinesValue }, (_, i) => ({
+                id: `machine_${i + 1}`,
+                name: `Machine ${i + 1}`,
+                assignedRows: [],
+              })),
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : {}),
     };
 
     try {
@@ -302,7 +351,7 @@ function MeasurementDashboardContent() {
       setShowCreateModal(false);
       resetForm();
       setIsCreating(false);
-      router.push(`/measurement-sheets/${docRef.id}`);
+      router.push(category === "cutting" ? `/measurement-sheets/${docRef.id}/cutting` : `/measurement-sheets/${docRef.id}`);
     } catch (err) {
       console.error("Error creating measurement sheet:", err);
       setIsCreating(false);
@@ -410,8 +459,10 @@ function MeasurementDashboardContent() {
         dateISO: format(new Date(), "yyyy-MM-dd"),
         dateTimestamp: serverTimestamp(),
         personType: sheet.personType,
+        sheetCategory: sheet.sheetCategory || (sheet.personType === "customer" ? "customer" : "polish"),
         locationType: sheet.locationType,
         sheetType: sheet.sheetType,
+        numSlabs: sheet.numSlabs,
         people: JSON.parse(JSON.stringify(sheet.people)),
         participantIds: [user.uid],
         total: sheet.total || 0,
@@ -456,8 +507,9 @@ function MeasurementDashboardContent() {
   // Filter sheets by activeTypeParam (Worker vs Customer) — always exclude soft-deleted sheets
   const currentCategorySheets = sheets.filter((s) => {
     if (s.deleted) return false;
-    if (!activeTypeParam) return true;
-    return s.personType === activeTypeParam;
+    if (!activeSheetCategory) return true;
+    const sheetCategory = s.sheetCategory || (s.personType === "customer" ? "customer" : "polish");
+    return sheetCategory === activeSheetCategory;
   });
 
   // Separate: own vs pending vs accepted
@@ -538,6 +590,11 @@ function MeasurementDashboardContent() {
     return "Pending";
   };
 
+  const sectionLabel = activeSheetCategory === "polish" ? "Polish" : activeSheetCategory === "cutting" ? "Cutting" : "Customer";
+  const sectionTitle = activeSheetCategory === "polish" ? "Polish Measurement Sheets" : activeSheetCategory === "cutting" ? "Cutting Measurement Sheets" : "Customer Measurement Sheets";
+  const switchTarget = activeSheetCategory === "customer" ? "polish" : activeSheetCategory === "polish" ? "cutting" : "customer";
+  const emptyStateLabel = activeSheetCategory === "polish" ? "polish" : activeSheetCategory === "cutting" ? "cutting" : "customer";
+
   // ── 1. SELECTION SCREEN (If type is null/not specified) ─────────────────────
   if (!activeTypeParam) {
     return (
@@ -569,21 +626,7 @@ function MeasurementDashboardContent() {
             </h1>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <button
-              onClick={() => router.push("/measurement-sheets?type=worker")}
-              className="group bg-sheet-surface border-2 border-sheet-border hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <User size={32} />
-              </div>
-              <span className="text-xl font-bold text-sheet-text group-hover:text-emerald-600">Worker</span>
-              <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
-                <span>Select Worker Section</span>
-                <ArrowRight size={16} />
-              </div>
-            </button>
-
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
             <button
               onClick={() => router.push("/measurement-sheets?type=customer")}
               className="group bg-sheet-surface border-2 border-sheet-border hover:border-blue-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
@@ -597,14 +640,42 @@ function MeasurementDashboardContent() {
                 <ArrowRight size={16} />
               </div>
             </button>
+
+            <button
+              onClick={() => router.push("/measurement-sheets?type=polish")}
+              className="group bg-sheet-surface border-2 border-sheet-border hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <User size={32} />
+              </div>
+              <span className="text-xl font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                <span>Select Polish Section</span>
+                <ArrowRight size={16} />
+              </div>
+            </button>
+
+            <button
+              onClick={() => router.push("/measurement-sheets?type=cutting")}
+              className="group bg-sheet-surface border-2 border-sheet-border hover:border-indigo-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Ruler size={32} />
+              </div>
+              <span className="text-xl font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
+              <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                <span>Select Cutting Section</span>
+                <ArrowRight size={16} />
+              </div>
+            </button>
           </div>
         </main>
       </div>
     );
   }
 
-  // ── 2. DEDICATED SECTION (Worker OR Customer) ──────────────────────────────
-  const isWorkerSection = activeTypeParam === "worker";
+  // ── 2. DEDICATED SECTION (Customer, Polish or Cutting) ──────────────────────────────
+  const isWorkerSection = activeSheetCategory === "polish";
 
   return (
     <div className="min-h-screen bg-sheet-bg text-sheet-text overflow-x-hidden">
@@ -627,10 +698,10 @@ function MeasurementDashboardContent() {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Switch Category Button */}
           <button
-            onClick={() => router.push(isWorkerSection ? "/measurement-sheets?type=customer" : "/measurement-sheets?type=worker")}
+            onClick={() => router.push(`/measurement-sheets?type=${switchTarget}`)}
             className="px-3 py-1.5 rounded-xl border border-sheet-border bg-white text-xs font-semibold text-sheet-text hover:bg-sheet-bg transition-colors"
           >
-            Switch to {isWorkerSection ? "Customer" : "Worker"}
+            Switch to {switchTarget === "customer" ? "Customer" : switchTarget === "polish" ? "Polish" : "Cutting"}
           </button>
 
           <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium">
@@ -660,7 +731,7 @@ function MeasurementDashboardContent() {
           <div>
             <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-sheet-text flex items-center gap-2">
               <Ruler className="text-emerald-600" size={20} />
-              {isWorkerSection ? "Worker Measurement Sheets" : "Customer Measurement Sheets"}
+              {sectionTitle}
             </h1>
           </div>
         </div>
@@ -772,7 +843,7 @@ function MeasurementDashboardContent() {
             <p className="text-sm font-semibold text-sheet-text">
               {search || locationTypeFilter !== "all"
                 ? "No measurement sheets match your search"
-                : `No ${isWorkerSection ? "worker" : "customer"} measurement sheets created yet`}
+                : `No ${emptyStateLabel} measurement sheets created yet`}
             </p>
             <button
               onClick={() => { resetForm(); setShowCreateModal(true); }}
@@ -797,7 +868,7 @@ function MeasurementDashboardContent() {
               return (
                 <div
                   key={s.id}
-                  onClick={() => canOpen && router.push(`/measurement-sheets/${s.id}`)}
+                  onClick={() => canOpen && router.push(s.sheetCategory === "cutting" ? `/measurement-sheets/${s.id}/cutting` : `/measurement-sheets/${s.id}`)}
                   className={`group relative bg-sheet-surface border border-sheet-border hover:border-emerald-500/40 rounded-2xl p-5 hover:shadow-xl transition-all duration-200 flex flex-col justify-between ${canOpen ? "cursor-pointer" : "cursor-not-allowed opacity-75"}`}
                 >
                   <div>
@@ -834,7 +905,7 @@ function MeasurementDashboardContent() {
                     <div className="text-xs text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-xl border border-sheet-border/60">
                       <div className="flex items-center gap-1 font-medium text-[11px] text-slate-400 mb-1">
                         {s.sheetType === "private" ? <User size={12} /> : <Users size={12} />}
-                        <span>{s.people.length === 1 ? "Person:" : `People (${s.people.length}):`}</span>
+                        <span>{activeSheetCategory === "cutting" ? `Machines / People (${s.people.length}):` : s.people.length === 1 ? "Person:" : `People (${s.people.length}):`}</span>
                       </div>
                       <p className="truncate font-semibold text-slate-700">{s.people.map((p) => p.name).join(", ")}</p>
                     </div>
@@ -906,7 +977,7 @@ function MeasurementDashboardContent() {
             <div className="flex items-center justify-between border-b border-sheet-border pb-3">
               <h2 className="text-lg font-bold text-sheet-text flex items-center gap-2">
                 <Ruler size={20} className="text-emerald-600" />
-                New {isWorkerSection ? "Worker" : "Customer"} Measurement Sheet
+                New {sectionLabel} Measurement Sheet
               </h2>
               <button onClick={() => setShowCreateModal(false)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
                 <X size={18} />
@@ -924,10 +995,10 @@ function MeasurementDashboardContent() {
               />
             </div>
 
-            {/* Starting Serial Number (permanent lock after creation) */}
+            {/* Starting Serial Number / Starting Slab Number */}
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1">
-                Starting Serial Number
+                {activeSheetCategory === "cutting" ? "Starting Slab Number" : "Starting Serial Number"}
                 <span className="ml-2 text-[10px] font-normal text-slate-400 italic">(locked after creation)</span>
               </label>
               <input
@@ -943,6 +1014,43 @@ function MeasurementDashboardContent() {
                 className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
               />
             </div>
+
+            {activeSheetCategory === "customer" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  Number of Slabs <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={formNumSlabs}
+                  onChange={(e) => setFormNumSlabs(e.target.value)}
+                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  placeholder="1"
+                />
+              </div>
+            )}
+
+            {activeSheetCategory === "cutting" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  Number of Machines <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={formNumMachines}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v >= 1) setFormNumMachines(v);
+                    else if (e.target.value === "") setFormNumMachines(1);
+                  }}
+                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+            )}
 
             {/* Customer Specific Fields (Measurement Type & Sheet Type) */}
             {!isWorkerSection && (
@@ -1000,7 +1108,7 @@ function MeasurementDashboardContent() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Number of {isWorkerSection ? "Workers" : "People"} <span className="text-red-500">*</span>
+                    {activeSheetCategory === "cutting" ? "Add Person" : `Number of ${isWorkerSection ? "Workers" : "People"}`} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1016,13 +1124,13 @@ function MeasurementDashboardContent() {
                   {selectedPeople.slice(0, typeof numPeople === "number" ? numPeople : 0).map((person, i) => (
                     <div key={i}>
                       <label className="block text-[11px] font-medium text-slate-500 mb-0.5">
-                        {isWorkerSection ? `Worker ${i + 1}` : `Person ${i + 1}`} <span className="text-red-500">*</span>
+                        {activeSheetCategory === "cutting" ? `Person ${i + 1}` : isWorkerSection ? `Polish ${i + 1}` : `Person ${i + 1}`} <span className="text-red-500">*</span>
                       </label>
                       <UserSelectDropdown
                         value={person.userId}
                         onChange={(userId, name) => handlePersonSelect(i, userId, name)}
                         excludeUserIds={getAlreadySelectedIds(i)}
-                        placeholder={isWorkerSection ? `Select Worker ${i + 1}...` : `Select Person ${i + 1}...`}
+                        placeholder={activeSheetCategory === "cutting" ? `Select Person ${i + 1}...` : isWorkerSection ? `Select Polish ${i + 1}...` : `Select Person ${i + 1}...`}
                       />
                     </div>
                   ))}
@@ -1120,7 +1228,7 @@ function MeasurementDashboardContent() {
               {/* Add Member Dropdown */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  + Add Member / Polish
+                  {manageSheet?.sheetCategory === "cutting" ? "+ Add Person" : "+ Add Member / Polish"}
                 </label>
                 <UserSelectDropdown
                   value={newMemberUserId}

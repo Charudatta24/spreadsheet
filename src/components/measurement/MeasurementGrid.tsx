@@ -172,20 +172,21 @@ export function MeasurementGrid({
       let targetRow = rowIdx;
       let targetColKey = colKey;
       let shouldAutoEdit = false;
+      const isEnterKey = e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Done" || e.key === "Go";
 
-      if (e.key === "Enter") {
+      if (isEnterKey) {
         e.preventDefault();
         shouldAutoEdit = true;
-        // Requirement 4: Pressing Enter on Length (A) moves to next row's Length cell.
-        // Pressing Enter on Height (B) moves to next row's Height cell.
-        if (colKey === "A" || colKey === "B" || colKey === "C" || colKey === "D") {
-          targetColKey = colKey;
+        if (colKey === "A") {
+          targetColKey = isLocal ? "B" : "C";
+        } else if ((isLocal && colKey === "B") || (!isLocal && colKey === "C")) {
           targetRow = rowIdx + 1;
+          targetColKey = "A";
         } else if (colKey === "SNO") {
           targetColKey = "A";
         } else {
-          targetColKey = "A";
           targetRow = rowIdx + 1;
+          targetColKey = "A";
         }
       } else if (e.key === "Tab") {
         e.preventDefault();
