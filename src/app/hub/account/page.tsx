@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     ArrowLeft, Mail, AtSign, Calendar,
     Pencil, Check, X, Loader2, UserCircle,
-    Trash2, RotateCcw, AlertTriangle, Clock, Ruler,
+    Trash2, RotateCcw, AlertTriangle, Clock, Ruler, ShieldAlert,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
+import { deleteUser } from "firebase/auth";
 import { db } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
@@ -16,7 +17,7 @@ import { subscribeFriends, FriendEntry } from "@/lib/firebase/friends";
 import {
     collection, query, where, onSnapshot,
     updateDoc, deleteDoc, doc, serverTimestamp,
-    deleteField,
+    deleteField, getDocs, writeBatch,
 } from "firebase/firestore";
 import type { MeasurementSheet } from "@/types";
 
@@ -331,6 +332,12 @@ function AccountPageContent() {
     const [error, setError] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Delete account state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
+
     const nickname = user?.nickname ?? "";
 
     useEffect(() => {
@@ -373,6 +380,62 @@ function AccountPageContent() {
     }
 
     function handleCancel() { setValue(nickname); setEditing(false); setError(""); }
+
+    // Delete account: cascade-delete all owned data then delete Auth account
+    async function handleDeleteAccount() {
+        if (!user || !auth.currentUser) return;
+        setIsDeleting(true);
+        setDeleteError("");
+        try {
+            const uid = user.uid;
+            const batch = writeBatch(db);
+
+            // 1. Delete owned measurement sheets
+            const sheetsSnap = await getDocs(
+                query(collection(db, "measurementSheets"), where("userId", "==", uid))
+            );
+            sheetsSnap.forEach((d) => batch.delete(d.ref));
+
+            // 2. Delete owned documents (spreadsheets)
+            const docsSnap = await getDocs(
+                query(collection(db, "documents"), where("owner", "==", uid))
+            );
+            docsSnap.forEach((d) => batch.delete(d.ref));
+
+            // 3. Delete friend requests sent by or addressed to this user
+            const frFromSnap = await getDocs(
+                query(collection(db, "friendRequests"), where("fromUid", "==", uid))
+            );
+            frFromSnap.forEach((d) => batch.delete(d.ref));
+            const frToSnap = await getDocs(
+                query(collection(db, "friendRequests"), where("toUid", "==", uid))
+            );
+            frToSnap.forEach((d) => batch.delete(d.ref));
+
+            // 4. Delete friends sub-collection entries
+            const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
+            friendsSnap.forEach((d) => batch.delete(d.ref));
+
+            // 5. Delete user profile doc
+            batch.delete(doc(db, "users", uid));
+
+            await batch.commit();
+
+            // 6. Delete Firebase Auth account (requires recent sign-in)
+            await deleteUser(auth.currentUser);
+
+            // Redirect to home
+            router.replace("/");
+        } catch (err: any) {
+            console.error("Delete account error:", err);
+            if (err.code === "auth/requires-recent-login") {
+                setDeleteError("For security, please sign out and sign in again before deleting your account.");
+            } else {
+                setDeleteError("Failed to delete account. Please try again.");
+            }
+            setIsDeleting(false);
+        }
+    }
 
     const joinedDate = user
         ? auth.currentUser?.metadata?.creationTime
@@ -539,6 +602,25 @@ function AccountPageContent() {
                             label="User ID"
                             value={user.uid}
                         />
+
+                        {/* ── Danger Zone ── */}
+                        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/40 p-5 space-y-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <ShieldAlert size={16} className="text-red-500" />
+                                <span className="text-sm font-bold text-red-600">Danger Zone</span>
+                            </div>
+                            <p className="text-xs text-red-500 leading-relaxed">
+                                Deleting your account is <strong>permanent and irreversible</strong>. All your measurement sheets,
+                                spreadsheets, and profile data will be permanently erased.
+                            </p>
+                            <button
+                                onClick={() => { setShowDeleteConfirm(true); setDeleteConfirmText(""); setDeleteError(""); }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-all active:scale-95"
+                            >
+                                <Trash2 size={14} />
+                                Delete Account
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -581,6 +663,90 @@ function AccountPageContent() {
                     </p>
                 </div>
             </main>
+
+            {/* ── Delete Account Confirmation Modal ── */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white border border-red-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5">
+                        {/* Header */}
+                        <div className="flex items-start gap-3">
+                            <div className="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                                <ShieldAlert size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-slate-800">Delete Account Permanently?</h2>
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                    This will permanently delete your account and <strong>all data</strong> including measurement sheets,
+                                    spreadsheets, and your profile. This action <strong>cannot be undone</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* What gets deleted */}
+                        <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 space-y-1.5">
+                            <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider mb-2">What will be deleted</p>
+                            {[
+                                "Your user profile and nickname",
+                                "All measurement sheets you created",
+                                "All spreadsheet documents you created",
+                                "All friend requests and connections",
+                                "Your Firebase authentication account",
+                            ].map((item) => (
+                                <div key={item} className="flex items-center gap-2 text-xs text-red-700">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Type DELETE to confirm */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                Type <span className="font-mono text-red-600 bg-red-50 px-1 rounded">DELETE</span> to confirm
+                            </label>
+                            <input
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                placeholder="Type DELETE here..."
+                                disabled={isDeleting}
+                                className="w-full bg-white border border-slate-200 focus:border-red-400 rounded-xl px-3 py-2.5 text-sm outline-none font-mono transition-colors disabled:opacity-50"
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Error message */}
+                        {deleteError && (
+                            <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-600">
+                                <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                                {deleteError}
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-1">
+                            <button
+                                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                disabled={deleteConfirmText !== "DELETE" || isDeleting}
+                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                            >
+                                {isDeleting ? (
+                                    <><Loader2 size={15} className="animate-spin" /> Deleting...</>
+                                ) : (
+                                    <><Trash2 size={15} /> Delete Forever</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style jsx>{`
         .grid-mesh {

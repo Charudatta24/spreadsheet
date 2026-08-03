@@ -376,7 +376,7 @@ function MeasurementDashboardContent() {
       setShowCreateModal(false);
       resetForm();
       setIsCreating(false);
-      router.push(category === "cutting" ? `/measurement-sheets/${docRef.id}/cutting` : `/measurement-sheets/${docRef.id}`);
+      router.push(`/measurement-sheets/${docRef.id}`);
     } catch (err) {
       console.error("Error creating measurement sheet:", err);
       setIsCreating(false);
@@ -905,7 +905,7 @@ function MeasurementDashboardContent() {
               return (
                 <div
                   key={s.id}
-                  onClick={() => canOpen && router.push(s.sheetCategory === "cutting" ? `/measurement-sheets/${s.id}/cutting` : `/measurement-sheets/${s.id}`)}
+                  onClick={() => canOpen && router.push(`/measurement-sheets/${s.id}`)}
                   className={`group relative bg-sheet-surface border border-sheet-border hover:border-emerald-500/40 rounded-2xl p-5 hover:shadow-xl transition-all duration-200 flex flex-col justify-between ${canOpen ? "cursor-pointer" : "cursor-not-allowed opacity-75"}`}
                 >
                   <div>

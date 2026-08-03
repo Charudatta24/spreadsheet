@@ -50,7 +50,7 @@ export function MeasurementGrid({
         { key: "A", label: "Length", isCalc: false },
         { key: "B", label: "Height", isCalc: false },
         { key: "C", label: "Calculated", isCalc: true },
-        { key: "REMARK", label: "Remark", isCalc: false, isRemark: true },
+        ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ]
     : [
         { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
@@ -59,7 +59,7 @@ export function MeasurementGrid({
         { key: "C", label: "Height", isCalc: false },
         { key: "D", label: "Height (CM)", isCalc: false },
         { key: "E", label: "Calculated", isCalc: true },
-        { key: "REMARK", label: "Remark", isCalc: false, isRemark: true },
+        ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ];
 
   // Effective permissions
@@ -407,8 +407,8 @@ export function MeasurementGrid({
         </div>
       )}
 
-      {/* Add / Edit Remark Modal */}
-      {editingRemarkRowIdx !== null && (
+      {/* Add / Edit Remark Modal — Customer sheets only */}
+      {isCustomerSheet && editingRemarkRowIdx !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div className="flex items-center justify-between">

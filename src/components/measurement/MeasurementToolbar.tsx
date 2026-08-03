@@ -145,14 +145,16 @@ export function MeasurementToolbar({
             </h1>
           )}
 
-          {/* Starting Serial Number Lock Indicator */}
-          <span
-            className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200"
-            title="Starting Serial Number is permanently locked"
-          >
-            <Lock size={10} />
-            Start S.No: {sheet.startingSerialNumber ?? 1}
-          </span>
+          {/* Starting Serial Number Lock Indicator — Customer sheets only */}
+          {sheet.sheetCategory === "customer" && (
+            <span
+              className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200"
+              title="Starting Serial Number is permanently locked"
+            >
+              <Lock size={10} />
+              Start S.No: {sheet.startingSerialNumber ?? 1}
+            </span>
+          )}
         </div>
 
         {/* Right: status, indicator, actions */}
