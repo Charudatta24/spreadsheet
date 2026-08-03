@@ -9,6 +9,7 @@ interface MeasurementCellProps {
   isActive: boolean;
   disabled?: boolean;
   requireLongPressToEdit?: boolean;
+  isSno?: boolean;
   onActivate: () => void;
   onChange: (val: number | null) => void;
   onKeyDownNav: (e: React.KeyboardEvent) => void;
@@ -23,6 +24,7 @@ function MeasurementCellComponent({
   isActive,
   disabled = false,
   requireLongPressToEdit = false,
+  isSno = false,
   onActivate,
   onChange,
   onKeyDownNav,
@@ -99,13 +101,14 @@ function MeasurementCellComponent({
     if (editing) {
       if (e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Done" || e.key === "Go" || e.key === "Tab") {
         e.preventDefault();
-        finishEditAndAdvance(e);
+        commitEdit();
+        onKeyDownNav(e);
       } else if (e.key === "Escape") {
         setEditing(false);
       }
     } else {
       if (isActive && !isCalculated && !disabled) {
-        if (e.key === "Enter") {
+        if (e.key === "Enter" || e.key === "NumpadEnter" || e.key === "Done" || e.key === "Go") {
           e.preventDefault();
           if (!requireLongPressToEdit) {
             startEditing();
@@ -190,7 +193,9 @@ function MeasurementCellComponent({
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchEnd}
       className={`relative h-9 px-3 flex items-center justify-end text-xs font-mono border-r border-b border-sheet-border select-none transition-colors outline-none ${
-        isCalculated
+        isSno
+          ? "bg-slate-50/60 text-slate-400 font-medium text-[11px]"
+          : isCalculated
           ? "bg-slate-100/70 dark:bg-slate-800/40 text-emerald-600 font-bold cursor-not-allowed"
           : "bg-sheet-cell hover:bg-sheet-cell-hover cursor-text text-sheet-text"
       } ${

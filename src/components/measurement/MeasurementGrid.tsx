@@ -283,6 +283,7 @@ export function MeasurementGrid({
                             isActive={isActive}
                             disabled={!canEditSerial}
                             requireLongPressToEdit={isCustomerSheet}
+                            isSno={true}
                             autoEdit={isAutoEdit}
                             onAutoEditDone={() => setPendingEdit(null)}
                             onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}

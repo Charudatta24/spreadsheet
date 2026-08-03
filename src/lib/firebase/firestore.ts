@@ -489,10 +489,22 @@ export async function getUserNickname(uid: string): Promise<string | null> {
   return (snap.data().nickname as string) ?? null;
 }
 
-export async function getUserProfile(uid: string): Promise<{ displayName?: string; email?: string | null; nickname?: string; accountType?: import("@/types").AccountType } | null> {
+export async function getUserProfile(uid: string): Promise<{
+  displayName?: string;
+  email?: string | null;
+  nickname?: string;
+  accountType?: import("@/types").AccountType;
+  workType?: import("@/types").WorkType;
+} | null> {
   const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
   if (!snap.exists()) return null;
-  return snap.data() as { displayName?: string; email?: string | null; nickname?: string; accountType?: import("@/types").AccountType };
+  return snap.data() as {
+    displayName?: string;
+    email?: string | null;
+    nickname?: string;
+    accountType?: import("@/types").AccountType;
+    workType?: import("@/types").WorkType;
+  };
 }
 
 export async function setUserProfile(
@@ -502,6 +514,7 @@ export async function setUserProfile(
     email?: string | null;
     nickname?: string;
     accountType?: import("@/types").AccountType;
+    workType?: import("@/types").WorkType;
   }
 ): Promise<void> {
   const data: Record<string, any> = {};
@@ -509,6 +522,7 @@ export async function setUserProfile(
   if (profile.email !== undefined) data.email = profile.email;
   if (profile.nickname !== undefined) data.nickname = profile.nickname;
   if (profile.accountType !== undefined) data.accountType = profile.accountType;
+  if (profile.workType !== undefined) data.workType = profile.workType;
   await setDoc(doc(db, USERS_COLLECTION, uid), data, { merge: true });
 }
 

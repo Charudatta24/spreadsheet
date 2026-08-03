@@ -8,7 +8,7 @@ import { getUserProfile } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/types";
 
 export function useAuthInit(): void {
-  const { setUser, setInitialized, setRequiresName, setRequiresAccountType } = useAuthStore();
+  const { setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType } = useAuthStore();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -39,6 +39,7 @@ export function useAuthInit(): void {
           isAnonymous: firebaseUser.isAnonymous,
           nickname: savedProfile?.nickname,
           accountType: savedProfile?.accountType,
+          workType: savedProfile?.workType,
         };
 
         setUser(baseUser);
@@ -52,12 +53,19 @@ export function useAuthInit(): void {
 
           if (!savedProfile || !savedProfile.accountType) {
             setRequiresAccountType(true);
+            setRequiresWorkType(false);
           } else {
             setRequiresAccountType(false);
+            if (savedProfile.accountType === "non-owner" && !savedProfile.workType) {
+              setRequiresWorkType(true);
+            } else {
+              setRequiresWorkType(false);
+            }
           }
         } else {
           setRequiresName(false);
           setRequiresAccountType(false);
+          setRequiresWorkType(false);
         }
         
         setInitialized(true);

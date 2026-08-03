@@ -158,6 +158,7 @@ export type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export type AccountType = "owner" | "non-owner";
+export type WorkType = "cutting" | "polish";
 
 export type AppUser = {
   uid: string;
@@ -173,6 +174,9 @@ export type AppUser = {
   requiresName?: boolean;
   /** Account type: owner or non-owner */
   accountType?: AccountType;
+  /** Work type for non-owners: cutting or polish */
+  workType?: WorkType;
+  requiresWorkType?: boolean;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────

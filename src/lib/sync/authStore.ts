@@ -8,10 +8,12 @@ interface AuthState {
   initialized: boolean;
   requiresName: boolean;
   requiresAccountType: boolean;
+  requiresWorkType: boolean;
   setUser: (user: AppUser | null) => void;
   setInitialized: (v: boolean) => void;
   setRequiresName: (v: boolean) => void;
   setRequiresAccountType: (v: boolean) => void;
+  setRequiresWorkType: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,10 +23,12 @@ export const useAuthStore = create<AuthState>()(
       initialized: false,
       requiresName: false,
       requiresAccountType: false,
+      requiresWorkType: false,
       setUser: (user) => set({ user }),
       setInitialized: (initialized) => set({ initialized }),
       setRequiresName: (requiresName) => set({ requiresName }),
       setRequiresAccountType: (requiresAccountType) => set({ requiresAccountType }),
+      setRequiresWorkType: (requiresWorkType) => set({ requiresWorkType }),
     }),
     {
       name: "collabsheet-auth",
@@ -32,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         requiresName: state.requiresName,
         requiresAccountType: state.requiresAccountType,
+        requiresWorkType: state.requiresWorkType,
       }),
     }
   )

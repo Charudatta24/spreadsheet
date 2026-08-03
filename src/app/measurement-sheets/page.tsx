@@ -120,7 +120,6 @@ function MeasurementDashboardContent() {
   const [singleName, setSingleName] = useState("");
   const [numPeople, setNumPeople] = useState<number | "">(2);
   const [selectedPeople, setSelectedPeople] = useState<SelectedPerson[]>([{ userId: "", name: "" }, { userId: "", name: "" }]);
-  const [formStartingSerialNumber, setFormStartingSerialNumber] = useState<number | null>(1);
   const [formNumSlabs, setFormNumSlabs] = useState("1");
   const [formNumMachines, setFormNumMachines] = useState<number | null>(3);
   const [isCreating, setIsCreating] = useState(false);
@@ -188,7 +187,6 @@ function MeasurementDashboardContent() {
       setFormNumSlabs("1");
       setFormNumMachines(3);
     }
-    setFormStartingSerialNumber(1);
   }, [activeSheetCategory, showCreateModal]);
 
   const handleNumPeopleChange = (valStr: string) => {
@@ -219,17 +217,13 @@ function MeasurementDashboardContent() {
   const effectiveSheetType = formPersonType === "worker" ? "multiple" : formSheetType;
   const effectiveLocationType = formPersonType === "worker" ? "local" : formLocationType;
 
-  const isStartingSerialValid =
-    typeof formStartingSerialNumber === "number" && Number.isInteger(formStartingSerialNumber) && formStartingSerialNumber >= 1;
-
   const isMachinesValid =
     activeSheetCategory !== "cutting" ||
     (typeof formNumMachines === "number" && Number.isInteger(formNumMachines) && formNumMachines >= 1);
 
-  // Form Validation
+  // Form Validation (Starting serial removed, default 1)
   const isFormValid = (() => {
     if (!formPersonType) return false;
-    if (!isStartingSerialValid) return false;
     if (!isMachinesValid) return false;
     if (formPersonType === "customer") {
       if (!formLocationType || !formSheetType) return false;
@@ -254,7 +248,6 @@ function MeasurementDashboardContent() {
     setSingleName("");
     setNumPeople(2);
     setSelectedPeople([{ userId: "", name: "" }, { userId: "", name: "" }]);
-    setFormStartingSerialNumber(1);
     setFormNumSlabs("1");
     setFormNumMachines(3);
   };
@@ -266,8 +259,7 @@ function MeasurementDashboardContent() {
 
     const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
-    if (typeof formStartingSerialNumber !== "number" || !Number.isInteger(formStartingSerialNumber) || formStartingSerialNumber < 1) return;
-    const sno = formStartingSerialNumber;
+    const sno = 1; // Default starting serial number is always 1 (Requirement 4)
     const slabsValue = formNumSlabs === "" ? 1 : Math.max(1, parseInt(formNumSlabs, 10) || 1);
     const machinesValue =
       category === "cutting"
@@ -276,7 +268,7 @@ function MeasurementDashboardContent() {
     if (category === "cutting" && machinesValue === null) return;
     const safeMachinesValue = machinesValue ?? 3;
 
-    // Build initial rows with correct serial numbers starting at sno
+    // Build initial rows with correct serial numbers starting at 1
     const buildRows = (startSno: number) =>
       Array.from({ length: 5 }, (_, i) => ({
         rowNumber: i + 1,
@@ -292,7 +284,24 @@ function MeasurementDashboardContent() {
     let people: PersonMeasurement[];
     let participantIds: string[] = [user.uid];
 
-    if (effectiveSheetType === "private") {
+    if (category === "cutting") {
+      // Requirement 1: Create N machine tabs (Machine 1, Machine 2, ... Machine N)
+      people = Array.from({ length: safeMachinesValue }, (_, i) => ({
+        name: `Machine ${i + 1}`,
+        rows: buildRows(1),
+        permissions: {
+          canView: true,
+          canModifyMeasurements: true,
+          canModifySerialNumbers: false,
+          canModifyRemarks: true,
+          canAddRows: true,
+          canDeleteRows: false,
+        },
+      }));
+      const chosenPeople = selectedPeople.slice(0, np);
+      const invitedIds = chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id));
+      participantIds = Array.from(new Set([user.uid, ...invitedIds]));
+    } else if (effectiveSheetType === "private") {
       people = [{ name: singleName.trim(), rows: buildRows(sno) }];
     } else {
       const chosenPeople = selectedPeople.slice(0, np);
@@ -310,14 +319,14 @@ function MeasurementDashboardContent() {
           canDeleteRows: false,
         },
       }));
-      participantIds = [user.uid, ...chosenPeople.map((p) => p.userId)];
+      participantIds = Array.from(new Set([user.uid, ...chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id))]));
     }
 
     const titleName =
       effectiveSheetType === "private"
         ? singleName.trim()
         : category === "cutting"
-        ? `Cutting (${people.length})`
+        ? `Cutting – ${safeMachinesValue} Machine${safeMachinesValue !== 1 ? "s" : ""}`
         : category === "polish"
         ? `Polishes (${people.length})`
         : `Customers (${people.length})`;
@@ -612,6 +621,12 @@ function MeasurementDashboardContent() {
   const emptyStateLabel = activeSheetCategory === "polish" ? "polish" : activeSheetCategory === "cutting" ? "cutting" : "customer";
 
   // ── 1. SELECTION SCREEN (If type is null/not specified) ─────────────────────
+  // Auto-redirect non-owners who have a workType selected
+  if (!activeTypeParam && user.accountType === "non-owner" && (user as any).workType) {
+    router.replace(`/measurement-sheets?type=${(user as any).workType}`);
+    return null;
+  }
+
   if (!activeTypeParam) {
     return (
       <div className="min-h-screen bg-sheet-bg text-sheet-text overflow-x-hidden">
@@ -643,47 +658,53 @@ function MeasurementDashboardContent() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <button
-              onClick={() => router.push("/measurement-sheets?type=customer")}
-              className="group bg-sheet-surface border-2 border-sheet-border hover:border-blue-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Users size={32} />
-              </div>
-              <span className="text-xl font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
-              <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
-                <span>Select Customer Section</span>
-                <ArrowRight size={16} />
-              </div>
-            </button>
+            {user.accountType !== "non-owner" && (
+              <button
+                onClick={() => router.push("/measurement-sheets?type=customer")}
+                className="group bg-sheet-surface border-2 border-sheet-border hover:border-blue-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users size={32} />
+                </div>
+                <span className="text-xl font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
+                <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                  <span>Select Customer Section</span>
+                  <ArrowRight size={16} />
+                </div>
+              </button>
+            )}
 
-            <button
-              onClick={() => router.push("/measurement-sheets?type=polish")}
-              className="group bg-sheet-surface border-2 border-sheet-border hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <User size={32} />
-              </div>
-              <span className="text-xl font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
-              <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
-                <span>Select Polish Section</span>
-                <ArrowRight size={16} />
-              </div>
-            </button>
+            {(user.accountType !== "non-owner" || (user as any).workType === "polish") && (
+              <button
+                onClick={() => router.push("/measurement-sheets?type=polish")}
+                className="group bg-sheet-surface border-2 border-sheet-border hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <User size={32} />
+                </div>
+                <span className="text-xl font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
+                <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                  <span>Select Polish Section</span>
+                  <ArrowRight size={16} />
+                </div>
+              </button>
+            )}
 
-            <button
-              onClick={() => router.push("/measurement-sheets?type=cutting")}
-              className="group bg-sheet-surface border-2 border-sheet-border hover:border-indigo-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Ruler size={32} />
-              </div>
-              <span className="text-xl font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
-              <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
-                <span>Select Cutting Section</span>
-                <ArrowRight size={16} />
-              </div>
-            </button>
+            {(user.accountType !== "non-owner" || (user as any).workType === "cutting") && (
+              <button
+                onClick={() => router.push("/measurement-sheets?type=cutting")}
+                className="group bg-sheet-surface border-2 border-sheet-border hover:border-indigo-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Ruler size={32} />
+                </div>
+                <span className="text-xl font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
+                <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                  <span>Select Cutting Section</span>
+                  <ArrowRight size={16} />
+                </div>
+              </button>
+            )}
           </div>
         </main>
       </div>
@@ -1008,34 +1029,6 @@ function MeasurementDashboardContent() {
                 value={formDate}
                 onChange={(e) => setFormDate(e.target.value)}
                 className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono text-slate-700 outline-none"
-              />
-            </div>
-
-            {/* Starting Serial Number / Starting Slab Number */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                {activeSheetCategory === "cutting" ? "Starting Slab Number" : "Starting Serial Number"}
-                <span className="ml-2 text-[10px] font-normal text-slate-400 italic">(locked after creation)</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={formStartingSerialNumber ?? ""}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") {
-                    setFormStartingSerialNumber(null);
-                    return;
-                  }
-                  if (/^\d+$/.test(raw)) {
-                    const parsed = Number(raw);
-                    setFormStartingSerialNumber(parsed >= 1 ? parsed : null);
-                  } else {
-                    setFormStartingSerialNumber(null);
-                  }
-                }}
-                className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
               />
             </div>
 
