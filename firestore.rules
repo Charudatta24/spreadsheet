@@ -1,16 +1,105 @@
-// firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Documents: any authenticated user can read/write
-    match /documents/{docId} {
-      allow read, write: if request.auth != null;
-      
-      match /cells/{cellId} {
-        allow read, write: if request.auth != null;
+
+    // ── Helper functions ─────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Users / profiles ──────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read:  if isSignedIn();
+      allow write: if isOwner(uid);
+
+      // Friends sub-collection
+      // Only the owning user can read/write their own friends list.
+      // Accepting a request writes to BOTH users — the accepting user's
+      // client writes to their own list AND to the sender's list.
+      // We allow any signed-in user to write a friend entry into any
+      // user's friends sub-collection so that the batch accept works,
+      // but reads are restricted to the owning user only.
+      match /friends/{friendUid} {
+        allow read:  if isOwner(uid);
+        allow write: if isSignedIn();   // accept/remove writes to both sides
+        allow delete: if isSignedIn();  // remove-friend deletes from both sides
       }
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
+    }
+
+    // ── Friend requests ───────────────────────────────────────────────────────
+    match /friendRequests/{requestId} {
+      // Anyone signed in can create a request
+      allow create: if isSignedIn()
+                    && request.resource.data.from == request.auth.uid;
+
+      // Sender or recipient can read
+      allow read: if isSignedIn()
+                  && (resource.data.from == request.auth.uid
+                   || resource.data.to   == request.auth.uid);
+
+      // Sender can cancel (delete); recipient can accept (delete after batch)
+      allow delete: if isSignedIn()
+                    && (resource.data.from == request.auth.uid
+                     || resource.data.to   == request.auth.uid);
+
+      // No updates — requests are created then deleted, never mutated
+      allow update: if false;
+    }
+
+    // ── Spreadsheet documents ─────────────────────────────────────────────────
+    match /documents/{docId} {
+      allow read:  if isSignedIn()
+                   && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.participants;
+      allow delete: if isSignedIn()
+                    && request.auth.uid == resource.data.ownerId;
+
+      match /cells/{cellId} {
+        allow read, write: if isSignedIn()
+                           && request.auth.uid in
+                              get(/databases/$(database)/documents/documents/$(docId)).data.participants;
+      }
+
+      // Group chat messages
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn()
+                           && request.auth.uid in
+                              get(/databases/$(database)/documents/documents/$(docId)).data.participants;
+      }
+
+      // Private (DM) chat messages
+      match /private_chats/{convId}/messages/{messageId} {
+        allow read, write: if isSignedIn()
+                           && request.auth.uid in
+                              convId.split("_");
+      }
+
+      // DM unread signals
+      match /dm_signals/{recipientUid}/senders/{senderUid} {
+        allow read:  if isSignedIn() && request.auth.uid == recipientUid;
+        allow write: if isSignedIn()
+                     && (request.auth.uid == senderUid
+                      || request.auth.uid == recipientUid);
+      }
+    }
+
+    // ── Standalone chatbox DMs ────────────────────────────────────────────────
+    // These live under documents/chatbox-dm/* — same rules as private_chats above.
+    // The private_chats rule above already covers this because chatbox-dm is
+    // treated as a regular docId. No extra rule needed.
+
+    // ── Measurement Sheets ─────────────────────────────────────────────────────
+    match /measurementSheets/{sheetId} {
+      allow read, update: if isSignedIn() && (resource.data.userId == request.auth.uid || (resource.data.participantIds != null && request.auth.uid in resource.data.participantIds));
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
   }
 }

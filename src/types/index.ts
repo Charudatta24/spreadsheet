@@ -167,6 +167,8 @@ export type AppUser = {
   isAnonymous: boolean;
   /** Optional nickname set by user after Google sign-in, persisted in Firestore */
   nickname?: string;
+  /** True if the user needs to provide their name for the first time */
+  requiresName?: boolean;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────
@@ -175,3 +177,42 @@ export type SelectionRange = {
   start: CellAddress;
   end: CellAddress;
 };
+
+// ─── Measurement Sheets ───────────────────────────────────────────────────────
+
+export type PersonType = "worker" | "customer";
+export type LocationType = "local" | "national";
+export type SheetType = "private" | "multiple";
+
+export type MeasurementRow = {
+  rowNumber: number;
+  A: number | null; // Length
+  B: number | null; // Height (Local) or Length in CM (National)
+  C: number | null; // Calculated Value (Local) or Height (National)
+  D?: number | null; // Height in CM (National)
+  E?: number | null; // Calculated Value (National)
+};
+
+export type PersonMeasurement = {
+  name: string;
+  userId?: string;
+  status?: "pending" | "accepted" | "declined";
+  rows: MeasurementRow[];
+};
+
+export type MeasurementSheet = {
+  id: string;
+  userId: string;
+  title: string;
+  date: string;
+  personType: PersonType;
+  locationType: LocationType;
+  sheetType: SheetType;
+  people: PersonMeasurement[];
+  participantIds?: string[];
+  total: number;
+  favorite?: boolean;
+  createdAt: any;
+  updatedAt: any;
+};
+

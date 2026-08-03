@@ -16,7 +16,7 @@ import type { CellId, CellData, CellAddress, PresenceUser, CellFormat } from "@/
 import { cellIdToAddress, addressToCellId } from "@/lib/formula";
 import { dispatchCellWrite, dispatchColWidths, dispatchRowHeights, dispatchColOrder } from "@/hooks/useDocumentSync";
 
-const NUM_ROWS = 100;
+const NUM_ROWS = 50;
 const ROW_HEADER_WIDTH = 48;
 
 function colLabel(col: number): string {
@@ -697,12 +697,17 @@ export function SpreadsheetGrid() {
     [colOrder, colWidths]
   );
 
+  const rowTemplateRows = useMemo(
+    () => `${DEFAULT_ROW_HEIGHT}px ${Array.from({ length: NUM_ROWS }, (_, r) => `${rowHeights[r] ?? DEFAULT_ROW_HEIGHT}px`).join(" ")}`,
+    [rowHeights]
+  );
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div ref={containerRef} className="w-full outline-none" tabIndex={0} onKeyDown={handleKeyDown} style={{ flex: 1, overflow: "auto" }}>
         <div className="grid-container" style={{
           gridTemplateColumns: `${ROW_HEADER_WIDTH}px ${colTemplateWidths}`,
-          gridTemplateRows: `${DEFAULT_ROW_HEIGHT}px ${Array.from({ length: NUM_ROWS }, (_, r) => `${rowHeights[r] ?? DEFAULT_ROW_HEIGHT}px`).join(" ")}`,
+          gridTemplateRows: rowTemplateRows,
           minWidth: "max-content",
         }}>
           <div className="grid-header-cell sticky top-0 left-0 z-30" style={{ gridColumn: 1, gridRow: 1 }} />

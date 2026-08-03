@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MessageSquare } from "lucide-react";
 import { useEditorStore } from "@/lib/sync/store";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -19,9 +19,19 @@ export function PresenceBar({
   const { presenceUsers } = useEditorStore();
   const { user } = useAuthStore();
   const [showList, setShowList] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   // Exclude self
   const others = presenceUsers.filter((u) => u.uid !== user?.uid);
+
+  const openList = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setShowList((v) => !v);
+  };
 
   return (
     <div className="relative flex items-center gap-1">
@@ -66,7 +76,8 @@ export function PresenceBar({
         </button>
 
         <button
-          onClick={() => setShowList(!showList)}
+          ref={triggerRef}
+          onClick={() => openList()}
           className="relative text-xs text-sheet-muted hover:text-sheet-text transition-colors flex items-center gap-1.5"
         >
           {others.length > 0 ? `${others.length} online` : "Online"}

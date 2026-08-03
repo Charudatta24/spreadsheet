@@ -489,6 +489,12 @@ export async function getUserNickname(uid: string): Promise<string | null> {
   return (snap.data().nickname as string) ?? null;
 }
 
+export async function getUserProfile(uid: string): Promise<{ displayName?: string; email?: string | null; nickname?: string } | null> {
+  const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
+  if (!snap.exists()) return null;
+  return snap.data() as { displayName?: string; email?: string | null; nickname?: string };
+}
+
 export async function setUserProfile(
   uid: string,
   profile: {
@@ -528,31 +534,42 @@ export async function searchUsersByEmailOrNickname(
   const text = queryText.toLowerCase().trim();
   if (!text) return [];
 
-  // Note: For a robust implementation we'd need a third-party service like Algolia or a specialized database index.
-  // For this simplified example, we'll fetch a limited set of users and filter client-side, OR we can try to do a simple query.
-  // We'll limit to 20 users that match.
-
-  // Querying all users is not ideal for large sets, but Firestore doesn't support complex substring search natively.
-  // A simple hack for startsWith search is to use `>=` and `<=`.
-  // We will do a generic fetch and filter.
-  // In a real app we'd use Algolia.
-  const usersSnap = await getDocs(query(collection(db, USERS_COLLECTION), limit(100)));
-  const matches = [];
+  const usersSnap = await getDocs(query(collection(db, USERS_COLLECTION), limit(200)));
+  const matches: { uid: string; displayName: string; email: string | null; nickname?: string }[] = [];
 
   for (const docSnap of usersSnap.docs) {
     const data = docSnap.data();
     const email = (data.email || "").toLowerCase();
     const nickname = (data.nickname || "").toLowerCase();
+    const displayName = (data.displayName || "").toLowerCase();
 
-    if (email.includes(text) || nickname.includes(text)) {
+    if (email.includes(text) || nickname.includes(text) || displayName.includes(text)) {
       matches.push({
         uid: docSnap.id,
-        displayName: data.displayName,
-        email: data.email,
+        displayName: data.displayName || "Unknown",
+        email: data.email || null,
         nickname: data.nickname,
       });
     }
   }
 
   return matches;
+}
+
+export async function getAllRegisteredUsers(): Promise<{ uid: string; displayName: string; email: string | null; nickname?: string }[]> {
+  const usersSnap = await getDocs(query(collection(db, USERS_COLLECTION), limit(200)));
+  const users: { uid: string; displayName: string; email: string | null; nickname?: string }[] = [];
+  
+  for (const docSnap of usersSnap.docs) {
+    const data = docSnap.data();
+    if (data.displayName) {
+      users.push({
+        uid: docSnap.id,
+        displayName: data.displayName,
+        email: data.email || null,
+        nickname: data.nickname,
+      });
+    }
+  }
+  return users;
 }

@@ -11,7 +11,6 @@ import { auth } from "@/lib/firebase/client";
 import { colorForUid } from "@/lib/sync/authStore";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingPortal } from "@/components/ui/LoadingPortal";
-import { FluxWorkLogo } from "@/components/ui/FluxWorkLogo";
 import { getUserNickname, setUserProfile } from "@/lib/firebase/firestore";
 import { NicknameModal } from "./NicknameModal";
 import type { AppUser } from "@/types";
@@ -120,9 +119,8 @@ export function LoginScreen() {
         <div className="w-full max-w-sm mx-4">
           {/* Logo */}
             <div className="inline-flex items-center gap-3 mb-3">
-              <FluxWorkLogo size={40} animated />
               <span className="text-2xl font-black text-sheet-text tracking-tight">
-                FluxWork
+                CollabSheet
               </span>
             </div>
             <p className="text-sheet-muted text-sm">

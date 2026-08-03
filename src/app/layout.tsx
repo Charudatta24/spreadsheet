@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppBootstrap } from "@/components/auth/AppBootstrap";
+import { NamePromptModal } from "@/components/auth/NamePromptModal";
 
 export const metadata: Metadata = {
-  title: "FluxWork",
+  title: "CollabSheet",
   description: "Real-time collaborative spreadsheets",
 };
 
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AppBootstrap>{children}</AppBootstrap>
+        <AppBootstrap>
+          {children}
+          <NamePromptModal />
+        </AppBootstrap>
       </body>
     </html>
   );

@@ -13,7 +13,6 @@ import { EditableNickname } from "@/components/auth/EditableNickname";
 import { ShareModal } from "@/components/grid/ShareModal";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
-import { FluxWorkLogo } from "@/components/ui/FluxWorkLogo";
 import type { DocumentMeta } from "@/types";
 
 // ── Name prompt modal ─────────────────────────────────────────────────────────
@@ -311,9 +310,8 @@ export default function DashboardPage() {
 
           {/* Center: Logo & Brand (Absolutely centered) */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none md:pointer-events-auto">
-            <FluxWorkLogo size={28} animated />
             <div className="flex flex-col leading-tight">
-              <span className="font-bold text-sm tracking-tight text-sheet-text">FluxWork</span>
+              <span className="font-bold text-sm tracking-tight text-sheet-text">CollabSheet</span>
               {user && (
                 <div className="flex items-center gap-1.5 h-4">
                    {!user.isAnonymous ? <EditableNickname /> : <span className="text-[10px] text-sheet-muted font-medium uppercase tracking-wider">{user.displayName}</span>}
@@ -331,7 +329,16 @@ export default function DashboardPage() {
               >
                 {(user?.nickname ?? user?.displayName)?.[0]?.toUpperCase()}
               </div>
-              <span className="font-medium truncate max-w-[100px]">{user?.nickname ?? user?.displayName}</span>
+              <span className="font-medium truncate max-w-[100px]">
+                {user?.nickname ? `@${user.nickname}` : user?.displayName}
+              </span>
+              <Link
+                href="/hub/account"
+                className="text-sheet-accent hover:text-sheet-accent-dim transition-colors"
+                title="Edit nickname"
+              >
+                <Pencil size={14} />
+              </Link>
             </div>
             <button
               onClick={handleSignOut}

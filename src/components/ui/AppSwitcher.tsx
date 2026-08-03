@@ -2,11 +2,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ChevronDown, FileSpreadsheet, MessageSquare, LayoutGrid, Check } from "lucide-react";
-import { FluxWorkLogo } from "./FluxWorkLogo";
+import { ChevronDown, FileSpreadsheet, MessageSquare, Ruler, Check } from "lucide-react";
 
 interface AppSwitcherProps {
-  currentApp: "spreadsheets" | "chatbox";
+  currentApp: "spreadsheets" | "chatbox" | "measurement-sheets";
 }
 
 export function AppSwitcher({ currentApp }: AppSwitcherProps) {
@@ -31,6 +30,7 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
       icon: FileSpreadsheet,
       color: "text-sheet-accent",
       bgColor: "bg-sheet-accent/10",
+      isComingSoon: false,
     },
     {
       id: "chatbox",
@@ -39,7 +39,16 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
       icon: MessageSquare,
       color: "text-sheet-accent-dim",
       bgColor: "bg-sheet-accent-dim/10",
-      isComingSoon: true,
+      isComingSoon: false,
+    },
+    {
+      id: "measurement-sheets",
+      name: "Measurement Sheets",
+      href: "/measurement-sheets",
+      icon: Ruler,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-500/10",
+      isComingSoon: false,
     },
   ];
 
@@ -106,7 +115,6 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-2 p-3 bg-sheet-bg hover:bg-sheet-border border-t border-sheet-border transition-colors text-xs font-medium text-sheet-muted"
           >
-            <FluxWorkLogo size={14} animated />
             Back to Hub
           </Link>
         </div>

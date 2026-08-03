@@ -1,0 +1,174 @@
+import * as XLSX from "xlsx";
+import type { MeasurementSheet, PersonMeasurement } from "@/types";
+
+/**
+ * Calculates row C or E value cleanly.
+ * Local: C = (A * B) / 144
+ * National: E = (A * C) / 144
+ */
+export function calculateRowResult(
+  locationType: "local" | "national",
+  A: number | null,
+  B: number | null,
+  C: number | null
+): number {
+  if (locationType === "local") {
+    if (A == null || B == null || isNaN(A) || isNaN(B) || A === 0 || B === 0) return 0;
+    return Number(((A * B) / 144).toFixed(2));
+  } else {
+    // National: Length is A, Height is C
+    if (A == null || C == null || isNaN(A) || isNaN(C) || A === 0 || C === 0) return 0;
+    return Number(((A * C) / 144).toFixed(2));
+  }
+}
+
+/**
+ * Calculates sum total for a person's rows.
+ */
+export function calculatePersonTotal(
+  locationType: "local" | "national",
+  rows: MeasurementSheet["people"][0]["rows"]
+): number {
+  let sum = 0;
+  for (const r of rows) {
+    const val = calculateRowResult(locationType, r.A, r.B, r.C);
+    sum += val;
+  }
+  return Number(sum.toFixed(2));
+}
+
+/**
+ * Calculates overall total across all people.
+ */
+export function calculateSheetTotal(sheet: MeasurementSheet): number {
+  let total = 0;
+  for (const person of sheet.people) {
+    total += calculatePersonTotal(sheet.locationType, person.rows);
+  }
+  return Number(total.toFixed(2));
+}
+
+/**
+ * Export MeasurementSheet to a formatted Excel .xlsx file.
+ */
+export function exportMeasurementToExcel(sheet: MeasurementSheet) {
+  const wb = XLSX.utils.book_new();
+
+  sheet.people.forEach((person, idx) => {
+    const sheetData: (string | number)[][] = [];
+
+    // Header metadata section
+    sheetData.push(["MEASUREMENT SHEET"]);
+    sheetData.push(["Date:", sheet.date]);
+    sheetData.push(["Person Type:", sheet.personType.toUpperCase()]);
+    sheetData.push(["Location Type:", sheet.locationType.toUpperCase()]);
+    sheetData.push(["Sheet Type:", sheet.sheetType.toUpperCase()]);
+    sheetData.push(["Person Name:", person.name]);
+    sheetData.push([]); // blank row
+
+    // Table Headers & Rows
+    if (sheet.locationType === "local") {
+      sheetData.push(["No.", "A - Length", "B - Height", "C - Calculated Value ((A×B)/144)"]);
+      person.rows.forEach((r, i) => {
+        const calcVal = calculateRowResult("local", r.A, r.B, r.C);
+        sheetData.push([
+          i + 1,
+          r.A ?? "",
+          r.B ?? "",
+          calcVal > 0 ? calcVal : "",
+        ]);
+      });
+      sheetData.push([]);
+      const pTotal = calculatePersonTotal("local", person.rows);
+      sheetData.push(["", "", "TOTAL:", pTotal]);
+    } else {
+      sheetData.push([
+        "No.",
+        "A - Length",
+        "B - Length (CM)",
+        "C - Height",
+        "D - Height (CM)",
+        "E - Calculated Value ((A×C)/144)",
+      ]);
+      person.rows.forEach((r, i) => {
+        const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+        sheetData.push([
+          i + 1,
+          r.A ?? "",
+          r.B ?? "",
+          r.C ?? "",
+          r.D ?? "",
+          calcVal > 0 ? calcVal : "",
+        ]);
+      });
+      sheetData.push([]);
+      const pTotal = calculatePersonTotal("national", person.rows);
+      sheetData.push(["", "", "", "", "TOTAL:", pTotal]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // Set column widths
+    const colWidths =
+      sheet.locationType === "local"
+        ? [{ wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 32 }]
+        : [{ wch: 8 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 32 }];
+    ws["!cols"] = colWidths;
+
+    const sheetTabName = sanitizeSheetName(person.name || `Person ${idx + 1}`);
+    XLSX.utils.book_append_sheet(wb, ws, sheetTabName);
+  });
+
+  const formattedDate = (sheet.date || "").replace(/[^a-zA-Z0-9]/g, "_");
+  const firstPerson = sheet.people[0]?.name?.replace(/[^a-zA-Z0-9]/g, "_") || "Person";
+  const fileName =
+    sheet.sheetType === "private"
+      ? `Measurement_Sheet_${firstPerson}_${formattedDate}.xlsx`
+      : `Measurement_Sheet_Multiple_${formattedDate}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+}
+
+/**
+ * Export MeasurementSheet to CSV file.
+ */
+export function exportMeasurementToCSV(sheet: MeasurementSheet, personIndex = 0) {
+  const person = sheet.people[personIndex] || sheet.people[0];
+  if (!person) return;
+
+  const rows: string[] = [];
+  rows.push(`Measurement Sheet`);
+  rows.push(`Date:,${sheet.date}`);
+  rows.push(`Person Type:,${sheet.personType}`);
+  rows.push(`Location Type:,${sheet.locationType}`);
+  rows.push(`Person Name:,${person.name}`);
+  rows.push(``);
+
+  if (sheet.locationType === "local") {
+    rows.push(`No.,A - Length,B - Height,C - Calculated`);
+    person.rows.forEach((r, i) => {
+      const calc = calculateRowResult("local", r.A, r.B, r.C);
+      rows.push(`${i + 1},${r.A ?? ""},${r.B ?? ""},${calc > 0 ? calc : ""}`);
+    });
+    rows.push(`,,,TOTAL: ${calculatePersonTotal("local", person.rows)}`);
+  } else {
+    rows.push(`No.,A - Length,B - Length CM,C - Height,D - Height CM,E - Calculated`);
+    person.rows.forEach((r, i) => {
+      const calc = calculateRowResult("national", r.A, r.B, r.C);
+      rows.push(`${i + 1},${r.A ?? ""},${r.B ?? ""},${r.C ?? ""},${r.D ?? ""},${calc > 0 ? calc : ""}`);
+    });
+    rows.push(`,,,,,TOTAL: ${calculatePersonTotal("national", person.rows)}`);
+  }
+
+  const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Measurement_${person.name.replace(/[^a-zA-Z0-9]/g, "_")}_${sheet.date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function sanitizeSheetName(name: string): string {
+  return name.replace(/[:\\/?*\[\]]/g, "").slice(0, 31) || "Sheet1";
+}

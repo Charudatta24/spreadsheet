@@ -95,7 +95,7 @@ interface EditorActions {
 // ─── Default dimensions ───────────────────────────────────────────────────────
 
 export const DEFAULT_COLS = 26;
-export const DEFAULT_ROWS = 100;
+export const DEFAULT_ROWS = 50;
 export const DEFAULT_COL_WIDTH = 100;
 export const DEFAULT_ROW_HEIGHT = 24;
 

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { FluxWorkLogo } from "./FluxWorkLogo";
 
 interface LoadingPortalProps {
   fullPage?: boolean;
@@ -18,9 +17,8 @@ export function LoadingPortal({ fullPage = false }: LoadingPortalProps) {
         <div className="relative z-10">
           {/* Subtle glow centered on the logo */}
           <div className="absolute inset-0 bg-sheet-accent rounded-full blur-[120px] opacity-10 animate-pulse" />
-          
           <div className="relative p-12">
-            <FluxWorkLogo size={180} animated />
+            
           </div>
         </div>
       </div>

@@ -6,8 +6,10 @@ import { USER_COLORS } from "@/types";
 interface AuthState {
   user: AppUser | null;
   initialized: boolean;
+  requiresName: boolean;
   setUser: (user: AppUser | null) => void;
   setInitialized: (v: boolean) => void;
+  setRequiresName: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -15,12 +17,14 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       initialized: false,
+      requiresName: false,
       setUser: (user) => set({ user }),
       setInitialized: (initialized) => set({ initialized }),
+      setRequiresName: (requiresName) => set({ requiresName }),
     }),
     {
       name: "collabsheet-auth",
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({ user: state.user, requiresName: state.requiresName }),
     }
   )
 );
