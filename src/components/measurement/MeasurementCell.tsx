@@ -107,6 +107,10 @@ function MeasurementCellComponent({
     }
   };
 
+  const handleDoubleClick = useCallback(() => {
+    startEditing();
+  }, [startEditing]);
+
   const displayVal = isCalculated
     ? calculatedValue > 0
       ? calculatedValue.toFixed(2)
@@ -120,7 +124,7 @@ function MeasurementCellComponent({
       ref={cellRef}
       tabIndex={0}
       onClick={onActivate}
-      onDoubleClick={startEditing}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       className={`relative h-9 px-3 flex items-center justify-end text-xs font-mono border-r border-b border-sheet-border select-none transition-colors outline-none ${
         isCalculated

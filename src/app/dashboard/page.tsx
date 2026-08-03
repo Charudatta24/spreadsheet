@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Plus, FileSpreadsheet, Trash2, LogOut, X, UserPlus, ArrowLeft } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, LogOut, X, UserPlus, ArrowLeft, Pencil } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { subscribeDocuments, createDocument, deleteDocument, searchUsersByEmailOrNickname, acceptInvite, rejectInvite } from "@/lib/firebase/firestore";
