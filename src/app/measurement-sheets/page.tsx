@@ -228,6 +228,8 @@ function MeasurementDashboardContent() {
     if (formPersonType === "customer") {
       if (!formLocationType || !formSheetType) return false;
     }
+    // Cutting sheets: only Number of Machines required; people are optional
+    if (activeSheetCategory === "cutting") return true;
     if (effectiveSheetType === "private") {
       return singleName.trim().length > 0;
     } else {
@@ -298,7 +300,9 @@ function MeasurementDashboardContent() {
           canDeleteRows: false,
         },
       }));
-      const chosenPeople = selectedPeople.slice(0, np);
+      // Only add invited people who were actually selected
+      const np2 = typeof numPeople === "number" ? numPeople : 0;
+      const chosenPeople = selectedPeople.slice(0, np2).filter((p) => p.userId && p.name);
       const invitedIds = chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id));
       participantIds = Array.from(new Set([user.uid, ...invitedIds]));
     } else if (effectiveSheetType === "private") {
@@ -1112,11 +1116,18 @@ function MeasurementDashboardContent() {
               </div>
             )}
 
+            {/* People / Person selector – for cutting this is optional */}
             {effectiveSheetType === "multiple" && (
               <div className="space-y-3">
+                {activeSheetCategory === "cutting" && (
+                  <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                    <strong>Optional:</strong> Invite people who can accept and enter measurements for each machine.
+                  </p>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">
-                    {activeSheetCategory === "cutting" ? "Add Person" : `Number of ${isWorkerSection ? "Workers" : "People"}`} <span className="text-red-500">*</span>
+                    {activeSheetCategory === "cutting" ? "Number of People to Invite (optional)" : `Number of ${isWorkerSection ? "Workers" : "People"}`}
+                    {activeSheetCategory !== "cutting" && <span className="text-red-500"> *</span>}
                   </label>
                   <input
                     type="text"
@@ -1132,13 +1143,14 @@ function MeasurementDashboardContent() {
                   {selectedPeople.slice(0, typeof numPeople === "number" ? numPeople : 0).map((person, i) => (
                     <div key={i}>
                       <label className="block text-[11px] font-medium text-slate-500 mb-0.5">
-                        {activeSheetCategory === "cutting" ? `Person ${i + 1}` : isWorkerSection ? `Polish ${i + 1}` : `Person ${i + 1}`} <span className="text-red-500">*</span>
+                        {activeSheetCategory === "cutting" ? `Person ${i + 1} (optional)` : isWorkerSection ? `Polish ${i + 1}` : `Person ${i + 1}`}
+                        {activeSheetCategory !== "cutting" && <span className="text-red-500"> *</span>}
                       </label>
                       <UserSelectDropdown
                         value={person.userId}
                         onChange={(userId, name) => handlePersonSelect(i, userId, name)}
                         excludeUserIds={getAlreadySelectedIds(i)}
-                        placeholder={activeSheetCategory === "cutting" ? `Select Person ${i + 1}...` : isWorkerSection ? `Select Polish ${i + 1}...` : `Select Person ${i + 1}...`}
+                        placeholder={activeSheetCategory === "cutting" ? `Select Person ${i + 1} (optional)…` : isWorkerSection ? `Select Polish ${i + 1}...` : `Select Person ${i + 1}...`}
                       />
                     </div>
                   ))}
