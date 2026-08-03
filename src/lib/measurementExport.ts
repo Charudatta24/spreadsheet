@@ -57,18 +57,9 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
   sheet.people.forEach((person, idx) => {
     const sheetData: (string | number)[][] = [];
 
-    // Header metadata section
-    sheetData.push(["MEASUREMENT SHEET"]);
-    sheetData.push(["Date:", sheet.date]);
-    sheetData.push(["Person Type:", sheet.personType.toUpperCase()]);
-    sheetData.push(["Location Type:", sheet.locationType.toUpperCase()]);
-    sheetData.push(["Sheet Type:", sheet.sheetType.toUpperCase()]);
-    sheetData.push(["Person Name:", person.name]);
-    sheetData.push([]); // blank row
-
-    // Table Headers & Rows
+    // Table Headers & Rows — clean column names, no metadata
     if (sheet.locationType === "local") {
-      sheetData.push(["No.", "A - Length", "B - Height", "C - Calculated Value ((A×B)/144)"]);
+      sheetData.push(["No.", "Length", "Height", "Calculated"]);
       person.rows.forEach((r, i) => {
         const calcVal = calculateRowResult("local", r.A, r.B, r.C);
         sheetData.push([
@@ -78,18 +69,10 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
           calcVal > 0 ? calcVal : "",
         ]);
       });
-      sheetData.push([]);
       const pTotal = calculatePersonTotal("local", person.rows);
-      sheetData.push(["", "", "TOTAL:", pTotal]);
+      sheetData.push(["", "", "Total:", pTotal]);
     } else {
-      sheetData.push([
-        "No.",
-        "A - Length",
-        "B - Length (CM)",
-        "C - Height",
-        "D - Height (CM)",
-        "E - Calculated Value ((A×C)/144)",
-      ]);
+      sheetData.push(["No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated"]);
       person.rows.forEach((r, i) => {
         const calcVal = calculateRowResult("national", r.A, r.B, r.C);
         sheetData.push([
@@ -101,9 +84,8 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
           calcVal > 0 ? calcVal : "",
         ]);
       });
-      sheetData.push([]);
       const pTotal = calculatePersonTotal("national", person.rows);
-      sheetData.push(["", "", "", "", "TOTAL:", pTotal]);
+      sheetData.push(["", "", "", "", "Total:", pTotal]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
@@ -111,8 +93,8 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
     // Set column widths
     const colWidths =
       sheet.locationType === "local"
-        ? [{ wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 32 }]
-        : [{ wch: 8 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 32 }];
+        ? [{ wch: 6 }, { wch: 14 }, { wch: 14 }, { wch: 16 }]
+        : [{ wch: 6 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }];
     ws["!cols"] = colWidths;
 
     const sheetTabName = sanitizeSheetName(person.name || `Person ${idx + 1}`);

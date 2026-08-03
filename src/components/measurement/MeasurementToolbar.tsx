@@ -61,21 +61,24 @@ export function MeasurementToolbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-sheet-surface border-b border-sheet-border px-4 py-2 flex flex-col gap-3 sm:px-4">
-      {/* Top row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-wrap items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-30 bg-sheet-surface border-b border-sheet-border">
+      {/* Main toolbar row */}
+      <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2">
+        {/* Left: back + title */}
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
           <Link
             href="/measurement-sheets"
-            className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
-            title="Back to Measurement Sheets"
+            className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors shrink-0"
+            title="Back"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={17} />
           </Link>
 
-          <AppSwitcher currentApp="measurement-sheets" />
+          <div className="hidden sm:block shrink-0">
+            <AppSwitcher currentApp="measurement-sheets" />
+          </div>
 
-          <div className="h-4 w-px bg-sheet-border mx-1" />
+          <div className="hidden sm:block h-4 w-px bg-sheet-border mx-0.5" />
 
           {/* Editable Title */}
           {editingTitle ? (
@@ -86,122 +89,108 @@ export function MeasurementToolbar({
               onBlur={handleTitleCommit}
               onKeyDown={(e) => e.key === "Enter" && handleTitleCommit()}
               autoFocus
-              className="px-2 py-1 text-sm font-semibold text-sheet-text bg-white border border-emerald-500 rounded outline-none w-full max-w-[18rem]"
+              className="px-2 py-1 text-xs sm:text-sm font-semibold text-sheet-text bg-white border border-emerald-500 rounded outline-none w-full max-w-[12rem] sm:max-w-[18rem]"
             />
           ) : (
             <h1
-              onClick={() => {
-                setTitleInput(sheet.title);
-                setEditingTitle(true);
-              }}
-              className="text-sm font-semibold text-sheet-text truncate cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded transition-colors"
+              onClick={() => { setTitleInput(sheet.title); setEditingTitle(true); }}
+              className="text-xs sm:text-sm font-semibold text-sheet-text truncate cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors max-w-[120px] sm:max-w-[200px] md:max-w-xs"
               title="Click to rename"
             >
               {sheet.title}
             </h1>
           )}
-
-          {/* Badges */}
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-            {sheet.locationType}
-          </span>
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-600 border border-slate-500/20">
-            {sheet.personType}
-          </span>
         </div>
 
-        {/* Status Indicator & Toolbar Actions */}
-        <div className="flex items-center gap-2">
-          {/* Save Status Indicator */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-500 font-medium">
+        {/* Right: save status + actions */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Save Status — icon only on mobile */}
+          <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-full bg-slate-100 text-[10px] sm:text-[11px] text-slate-500 font-medium">
             {isOffline ? (
               <>
-                <WifiOff size={13} className="text-amber-500" />
-                <span className="text-amber-600">Offline</span>
+                <WifiOff size={12} className="text-amber-500" />
+                <span className="hidden sm:inline text-amber-600">Offline</span>
               </>
             ) : saveState === "saving" || saveState === "pending" ? (
               <>
-                <RefreshCw size={12} className="text-emerald-500 animate-spin" />
-                <span>Saving...</span>
+                <RefreshCw size={11} className="text-emerald-500 animate-spin" />
+                <span className="hidden sm:inline">Saving...</span>
               </>
             ) : saveState === "error" ? (
               <>
-                <AlertCircle size={13} className="text-red-500" />
-                <span className="text-red-500">Save failed. Retrying...</span>
+                <AlertCircle size={12} className="text-red-500" />
+                <span className="hidden sm:inline text-red-500">Failed</span>
               </>
             ) : (
               <>
-                <CheckCircle2 size={13} className="text-emerald-500" />
-                <span className="text-slate-600 dark:text-slate-300">All changes saved</span>
+                <CheckCircle2 size={12} className="text-emerald-500" />
+                <span className="hidden sm:inline text-slate-600">Saved</span>
               </>
             )}
           </div>
 
-          <div className="h-4 w-px bg-sheet-border mx-1" />
+          <div className="hidden sm:block h-4 w-px bg-sheet-border mx-0.5" />
 
           {/* Undo / Redo */}
-          <button
-            onClick={onUndo}
-            disabled={!canUndo}
+          <button onClick={onUndo} disabled={!canUndo}
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text disabled:opacity-30 transition-colors"
             title="Undo"
           >
-            <Undo2 size={16} />
+            <Undo2 size={15} />
           </button>
-          <button
-            onClick={onRedo}
-            disabled={!canRedo}
+          <button onClick={onRedo} disabled={!canRedo}
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text disabled:opacity-30 transition-colors"
             title="Redo"
           >
-            <Redo2 size={16} />
+            <Redo2 size={15} />
           </button>
 
-          <div className="h-4 w-px bg-sheet-border mx-1" />
+          <div className="hidden sm:block h-4 w-px bg-sheet-border mx-0.5" />
 
-          {/* Export & Print */}
+          {/* Excel download — always visible */}
           <button
             onClick={() => exportMeasurementToExcel(sheet)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
             title="Download as Excel (.xlsx)"
           >
-            <Download size={14} />
+            <Download size={13} />
             <span>Excel</span>
           </button>
 
+          {/* CSV — hidden on small mobile */}
           <button
             onClick={() => exportMeasurementToCSV(sheet, activePersonIdx)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-sheet-border hover:bg-sheet-border text-sheet-text font-medium text-xs transition-all"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-sheet-border hover:bg-sheet-border text-sheet-text font-medium text-xs transition-all"
             title="Export CSV"
           >
-            <FileSpreadsheet size={14} />
+            <FileSpreadsheet size={13} />
             <span>CSV</span>
           </button>
 
-          <button
-            onClick={handlePrint}
-            className="p-1.5 rounded-lg border border-sheet-border hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
+          <button onClick={handlePrint}
+            className="hidden sm:block p-1.5 rounded-lg border border-sheet-border hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
             title="Print sheet"
           >
-            <Printer size={16} />
+            <Printer size={15} />
           </button>
         </div>
       </div>
 
-      {/* Multiple People Tabs (if sheetType === 'multiple') */}
+      {/* People tabs row (multiple sheets) */}
       {sheet.people.length > 1 && (
-        <div className="flex items-center gap-1 border-t border-sheet-border pt-2 overflow-x-auto">
-          <span className="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1 shrink-0">
-            <User size={13} /> Currently measuring:
+        <div className="flex items-center gap-1 border-t border-sheet-border px-2 sm:px-4 py-1.5 overflow-x-auto">
+          <span className="text-[10px] sm:text-xs font-semibold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
+            <User size={11} />
+            <span className="hidden sm:inline">Measuring:</span>
           </span>
           {sheet.people.map((person, idx) => (
             <button
               key={idx}
               onClick={() => onSelectPerson(idx)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+              className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-medium transition-all shrink-0 ${
                 activePersonIdx === idx
                   ? "bg-emerald-600 text-white shadow-sm font-semibold"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {person.name || `Person ${idx + 1}`}

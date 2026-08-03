@@ -108,7 +108,6 @@ export default function AppHub() {
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><FileSpreadsheet size={28} /></div>
               <h2 className="text-xl font-bold mb-2 text-sheet-text">Spreadsheets</h2>
-              <p className="text-sheet-muted text-xs leading-relaxed">Create, edit and share collaborative spreadsheets in real-time.</p>
             </div>
             <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Enter Workspace</span><ArrowRight size={16} /></div>
           </Link>
@@ -118,9 +117,6 @@ export default function AppHub() {
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><MessageSquare size={28} /></div>
               <h2 className="text-xl font-bold mb-2 text-sheet-text">Chatbox</h2>
-              <p className="text-sheet-muted text-xs leading-relaxed">
-                {friends.length > 0 ? `${friends.length} friend${friends.length > 1 ? "s" : ""} connected.` : "Add friends from Settings to start private chats."}
-              </p>
             </div>
             <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Chat</span><ArrowRight size={16} /></div>
           </Link>
@@ -130,7 +126,6 @@ export default function AppHub() {
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><Ruler size={28} /></div>
               <h2 className="text-xl font-bold mb-2 text-sheet-text">Measurement Sheets</h2>
-              <p className="text-sheet-muted text-xs leading-relaxed">Log worker/customer dimensions (Local/National) with auto calculation & Excel export.</p>
             </div>
             <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Measurement Sheets</span><ArrowRight size={16} /></div>
           </Link>

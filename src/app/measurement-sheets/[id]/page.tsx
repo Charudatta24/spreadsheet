@@ -89,16 +89,24 @@ export default function MeasurementSheetEditorPage() {
       />
 
       {/* Main Grid View */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-5xl mx-auto w-full">
-        {/* Person Header Banner */}
-        <div className="mb-4 flex items-center justify-between bg-sheet-surface p-4 rounded-xl border border-sheet-border shadow-sm">
-          <div>
-            <h2 className="text-sm font-bold text-sheet-text flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <main className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 w-full max-w-5xl mx-auto">
+        {/* Person Header Banner — compact on mobile */}
+        <div className="mb-3 flex items-center justify-between bg-sheet-surface px-3 py-2.5 sm:p-4 rounded-xl border border-sheet-border shadow-sm">
+          <h2 className="text-xs sm:text-sm font-bold text-sheet-text flex items-center gap-2 truncate">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span className="truncate">
               {sheet.sheetType === "private"
                 ? `Person: ${currentPerson?.name}`
-                : `Currently Measuring: ${currentPerson?.name}`}
-            </h2>
+                : `Measuring: ${currentPerson?.name}`}
+            </span>
+          </h2>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
+              {sheet.locationType}
+            </span>
+            <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
+              {sheet.personType}
+            </span>
           </div>
         </div>
 
@@ -109,6 +117,7 @@ export default function MeasurementSheetEditorPage() {
             locationType={sheet.locationType}
             rows={currentPerson.rows}
             onChangeRows={handleRowsChange}
+            autoFocusFirstCell={true}
           />
         )}
       </main>

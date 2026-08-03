@@ -10,31 +10,35 @@ interface MeasurementGridProps {
   locationType: LocationType;
   rows: MeasurementRow[];
   onChangeRows: (rows: MeasurementRow[]) => void;
+  autoFocusFirstCell?: boolean;
 }
 
 export function MeasurementGrid({
   locationType,
   rows,
   onChangeRows,
+  autoFocusFirstCell = false,
 }: MeasurementGridProps) {
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colKey: string } | null>(
     { rowIdx: 0, colKey: "A" }
   );
-  const [pendingEdit, setPendingEdit] = useState<{ rowIdx: number; colKey: string } | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ rowIdx: number; colKey: string } | null>(
+    autoFocusFirstCell ? { rowIdx: 0, colKey: "A" } : null
+  );
 
   const isLocal = locationType === "local";
   const columns = isLocal
     ? [
-        { key: "A", label: "A - Length", isCalc: false },
-        { key: "B", label: "B - Height", isCalc: false },
-        { key: "C", label: "C - Calculated", isCalc: true },
+        { key: "A", label: "Length", isCalc: false },
+        { key: "B", label: "Height", isCalc: false },
+        { key: "C", label: "Calculated", isCalc: true },
       ]
     : [
-        { key: "A", label: "A - Length", isCalc: false },
-        { key: "B", label: "B - Length (CM)", isCalc: false },
-        { key: "C", label: "C - Height", isCalc: false },
-        { key: "D", label: "D - Height (CM)", isCalc: false },
-        { key: "E", label: "E - Calculated", isCalc: true },
+        { key: "A", label: "Length", isCalc: false },
+        { key: "B", label: "Length (CM)", isCalc: false },
+        { key: "C", label: "Height", isCalc: false },
+        { key: "D", label: "Height (CM)", isCalc: false },
+        { key: "E", label: "Calculated", isCalc: true },
       ];
 
   // Ensure there are at least 5 rows initialized
@@ -195,25 +199,25 @@ export function MeasurementGrid({
 
   return (
     <div className="w-full flex flex-col bg-sheet-surface rounded-xl border border-sheet-border overflow-hidden shadow-sm">
-      {/* Grid Table Container */}
-      <div className="overflow-x-auto">
-        <table className="min-w-[600px] w-full border-collapse text-xs">
+      {/* Grid Table Container — scrollable on mobile */}
+      <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+        <table className="min-w-[320px] w-full border-collapse text-xs">
           <thead>
             <tr className="bg-sheet-header text-sheet-text border-b-2 border-sheet-border">
-              <th className="w-12 px-2 py-2 text-center font-bold text-slate-500 border-r border-sheet-border">
-                No.
+              <th className="w-8 sm:w-12 px-1 sm:px-2 py-2 text-center font-bold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs">
+                #
               </th>
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`px-3 py-2 text-right font-bold border-r border-sheet-border ${
-                    c.isCalc ? "text-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/20" : ""
+                  className={`px-2 sm:px-3 py-2 text-right font-bold border-r border-sheet-border text-[10px] sm:text-xs ${
+                    c.isCalc ? "text-emerald-600 bg-emerald-50/40" : ""
                   }`}
                 >
                   {c.label}
                 </th>
               ))}
-              <th className="w-10 px-2 py-2"></th>
+              <th className="w-8 px-1 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -223,14 +227,16 @@ export function MeasurementGrid({
               return (
                 <tr
                   key={rIdx}
-                  className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group"
+                  className="hover:bg-slate-50/50 transition-colors group"
                 >
-                  <td className="px-2 py-1 text-center font-mono font-semibold text-slate-400 border-r border-b border-sheet-border bg-slate-50/50 dark:bg-slate-900/30 select-none">
+                  <td className="px-1 sm:px-2 py-1 text-center font-mono font-semibold text-slate-400 border-r border-b border-sheet-border bg-slate-50/50 select-none text-[10px] sm:text-xs">
                     {rIdx + 1}
                   </td>
                   {columns.map((col) => {
                     const isActive =
                       activeCell?.rowIdx === rIdx && activeCell?.colKey === col.key;
+                    const isAutoEdit =
+                      pendingEdit?.rowIdx === rIdx && pendingEdit?.colKey === col.key;
 
                     if (col.isCalc) {
                       return (
@@ -266,6 +272,8 @@ export function MeasurementGrid({
                         <MeasurementCell
                           value={cellVal}
                           isActive={isActive}
+                          autoEdit={isAutoEdit}
+                          onAutoEditDone={() => setPendingEdit(null)}
                           onActivate={() =>
                             setActiveCell({ rowIdx: rIdx, colKey: col.key })
                           }
@@ -289,15 +297,15 @@ export function MeasurementGrid({
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-slate-50 dark:bg-slate-900 text-sheet-text border-t border-sheet-border">
-              <td className="px-2 py-2 text-center font-mono font-semibold text-slate-500 border-r border-sheet-border"></td>
+            <tr className="bg-slate-50 text-sheet-text border-t border-sheet-border">
+              <td className="px-1 sm:px-2 py-2 text-center font-mono font-semibold text-slate-500 border-r border-sheet-border"></td>
               <td
                 colSpan={columns.length - 1}
-                className="px-3 py-2 text-right font-semibold text-slate-500 border-r border-sheet-border"
+                className="px-2 sm:px-3 py-2 text-right font-semibold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs"
               >
                 TOTAL =
               </td>
-              <td className="px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border">
+              <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
                 {totalVal.toFixed(2)}
               </td>
               <td className="px-1 py-2 text-center border-sheet-border"></td>
@@ -307,10 +315,10 @@ export function MeasurementGrid({
       </div>
 
       {/* Grid Footer Controls */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-sheet-border flex flex-col sm:flex-row items-center justify-start gap-2">
+      <div className="p-2 sm:p-3 bg-slate-50 border-t border-sheet-border flex items-center justify-start gap-2">
         <button
           onClick={addRow}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
         >
           <Plus size={14} />
           Add Row

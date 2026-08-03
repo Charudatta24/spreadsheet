@@ -417,44 +417,47 @@ export default function MeasurementSheetsDashboard() {
       <div className="grid-mesh fixed inset-0 pointer-events-none z-0" />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 h-16 border-b border-sheet-border bg-sheet-bg/90 backdrop-blur-md flex items-center px-6 justify-between">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 h-14 sm:h-16 border-b border-sheet-border bg-sheet-bg/90 backdrop-blur-md flex items-center px-3 sm:px-6 justify-between gap-2">
+        <div className="flex items-center gap-2">
           <Link
             href="/hub"
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
           >
             <ArrowLeft size={18} />
           </Link>
-          <AppSwitcher currentApp="measurement-sheets" />
+          <div className="hidden sm:block">
+            <AppSwitcher currentApp="measurement-sheets" />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {/* User name display */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium text-sheet-text">
+        <div className="flex items-center gap-2">
+          {/* User avatar — name hidden on small screens */}
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium text-sheet-text">
             <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
               {user.displayName?.[0]?.toUpperCase() ?? "U"}
             </div>
-            <span>{user.displayName}</span>
+            <span className="hidden sm:inline">{user.displayName}</span>
           </div>
           <button
             onClick={() => {
               resetForm();
               setShowCreateModal(true);
             }}
-            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
-            <Plus size={16} />
-            <span>New Measurement Sheet</span>
+            <Plus size={15} />
+            <span className="hidden sm:inline">New Measurement Sheet</span>
+            <span className="sm:hidden">New</span>
           </button>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 py-8">
+      <main className="relative z-10 max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {/* Title Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-sheet-text flex items-center gap-2">
-              <Ruler className="text-emerald-600" size={24} />
-              Measurement Sheets Dashboard
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-sheet-text flex items-center gap-2">
+              <Ruler className="text-emerald-600" size={20} />
+              Measurement Sheets
             </h1>
             <p className="text-xs text-sheet-muted mt-1">
               Manage local & national dimension logs for workers and customers.
