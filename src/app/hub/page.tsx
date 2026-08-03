@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, ChevronRight, UserCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, UserCircle, X, User } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -11,9 +12,11 @@ import { subscribeFriends, subscribeFriendRequests } from "@/lib/firebase/friend
 import type { FriendEntry, FriendRequest } from "@/lib/firebase/friends";
 
 export default function AppHub() {
+  const router = useRouter();
   const { user, setUser } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showMeasurementChoice, setShowMeasurementChoice] = useState(false);
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
 
@@ -99,7 +102,6 @@ export default function AppHub() {
       <main className="relative z-10 pt-16 pb-16 px-6 max-w-6xl mx-auto">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold mb-3 tracking-tight text-sheet-text">Choose your workspace</h1>
-          <p className="text-sheet-muted">Select an application to start collaborating with your team.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link href="/dashboard"
@@ -120,17 +122,58 @@ export default function AppHub() {
             </div>
             <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Chat</span><ArrowRight size={16} /></div>
           </Link>
-          <Link href="/measurement-sheets"
-            className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-emerald-500/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
+          <div
+            onClick={() => setShowMeasurementChoice(true)}
+            className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-emerald-500/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden cursor-pointer">
             <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><Ruler size={120} className="text-emerald-600" /></div>
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><Ruler size={28} /></div>
               <h2 className="text-xl font-bold mb-2 text-sheet-text">Measurement Sheets</h2>
             </div>
             <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Measurement Sheets</span><ArrowRight size={16} /></div>
-          </Link>
+          </div>
         </div>
       </main>
+
+      {/* Measurement Choice Modal */}
+      {showMeasurementChoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-sheet-border pb-3">
+              <h2 className="text-lg font-bold text-sheet-text flex items-center gap-2">
+                <Ruler size={20} className="text-emerald-600" />
+                Measurement Sheets
+              </h2>
+              <button onClick={() => setShowMeasurementChoice(false)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=worker"); }}
+                className="p-5 rounded-2xl border-2 border-sheet-border hover:border-emerald-500 hover:bg-emerald-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <User size={24} />
+                </div>
+                <span className="text-sm font-bold text-sheet-text group-hover:text-emerald-600">Worker</span>
+              </button>
+
+              <button
+                onClick={() => { setShowMeasurementChoice(false); router.push("/measurement-sheets?type=customer"); }}
+                className="p-5 rounded-2xl border-2 border-sheet-border hover:border-blue-500 hover:bg-blue-50/40 flex flex-col items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+              >
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users size={24} />
+                </div>
+                <span className="text-sm font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         .grid-mesh { background-image: linear-gradient(rgba(26,115,232,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(26,115,232,0.04) 1px, transparent 1px); background-size: 60px 60px; animation: grid-scroll 20s linear infinite; }
         @keyframes grid-scroll { from { background-position: 0 0; } to { background-position: 60px 60px; } }

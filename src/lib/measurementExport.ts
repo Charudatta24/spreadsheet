@@ -14,11 +14,11 @@ export function calculateRowResult(
 ): number {
   if (locationType === "local") {
     if (A == null || B == null || isNaN(A) || isNaN(B) || A === 0 || B === 0) return 0;
-    return Number(((A * B) / 144).toFixed(2));
+    return (A * B) / 144;
   } else {
     // National: Length is A, Height is C
     if (A == null || C == null || isNaN(A) || isNaN(C) || A === 0 || C === 0) return 0;
-    return Number(((A * C) / 144).toFixed(2));
+    return (A * C) / 144;
   }
 }
 
@@ -34,7 +34,7 @@ export function calculatePersonTotal(
     const val = calculateRowResult(locationType, r.A, r.B, r.C);
     sum += val;
   }
-  return Number(sum.toFixed(2));
+  return sum;
 }
 
 /**
@@ -45,7 +45,7 @@ export function calculateSheetTotal(sheet: MeasurementSheet): number {
   for (const person of sheet.people) {
     total += calculatePersonTotal(sheet.locationType, person.rows);
   }
-  return Number(total.toFixed(2));
+  return total;
 }
 
 /**

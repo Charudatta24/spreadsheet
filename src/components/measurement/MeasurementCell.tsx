@@ -134,8 +134,8 @@ function MeasurementCellComponent({
 
   const displayVal = isCalculated
     ? calculatedValue > 0
-      ? calculatedValue.toFixed(2)
-      : "0.00"
+      ? String(calculatedValue)
+      : "0"
     : value != null && !isNaN(value)
     ? String(value)
     : "";

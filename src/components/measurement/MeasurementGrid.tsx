@@ -306,7 +306,7 @@ export function MeasurementGrid({
                 TOTAL =
               </td>
               <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
-                {totalVal.toFixed(2)}
+                {totalVal}
               </td>
               <td className="px-1 py-2 text-center border-sheet-border"></td>
             </tr>

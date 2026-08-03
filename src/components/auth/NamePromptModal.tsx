@@ -50,10 +50,7 @@ export function NamePromptModal() {
           <div className="w-16 h-16 bg-sheet-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-sheet-accent">
             <span className="text-2xl font-bold">👋</span>
           </div>
-          <h2 className="text-2xl font-bold text-sheet-text mb-2">Welcome to CollabSheet!</h2>
-          <p className="text-sm text-sheet-muted">
-            It looks like this is your first time here. Please enter your name so your team knows who you are.
-          </p>
+          <h2 className="text-2xl font-bold text-sheet-text mb-2">Welcome</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -205,6 +205,8 @@ export type MeasurementSheet = {
   userId: string;
   title: string;
   date: string;
+  dateISO?: string;
+  dateTimestamp?: any;
   personType: PersonType;
   locationType: LocationType;
   sheetType: SheetType;

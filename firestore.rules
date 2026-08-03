@@ -97,9 +97,21 @@ service cloud.firestore {
 
     // ── Measurement Sheets ─────────────────────────────────────────────────────
     match /measurementSheets/{sheetId} {
-      allow read, update: if isSignedIn() && (resource.data.userId == request.auth.uid || (resource.data.participantIds != null && request.auth.uid in resource.data.participantIds));
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read, update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || (
+          resource.data.participantIds != null &&
+          request.auth.uid in resource.data.participantIds && (
+            resource.data.personType != "worker" || (
+              resource.data.dateTimestamp == null || (
+                request.time >= resource.data.dateTimestamp - duration.value(12, 'h') &&
+                request.time <= resource.data.dateTimestamp + duration.value(36, 'h')
+              )
+            )
+          )
+        )
+      );
     }
   }
 }
