@@ -27,12 +27,20 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  height: 100%;
-  overflow: hidden;
+html {
+  min-height: 100%;
   background: var(--sheet-bg);
   color: var(--sheet-text);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--sheet-bg);
+  color: var(--sheet-text);
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Scrollbars ── */
@@ -196,6 +204,7 @@ body {
 .formula-bar {
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 32px;
   border-bottom: 1px solid var(--sheet-border);
   background: var(--sheet-surface);
@@ -205,6 +214,7 @@ body {
 
 .formula-bar input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;

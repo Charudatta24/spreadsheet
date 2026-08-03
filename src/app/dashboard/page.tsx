@@ -294,7 +294,7 @@ export default function DashboardPage() {
 
       {/* Header */}
       <header className="border-b border-sheet-border bg-sheet-surface sticky top-0 z-30">
-        <div className="w-full px-6 h-14 flex items-center justify-between relative">
+        <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between relative">
           {/* Left side: Navigation */}
           <div className="flex items-center gap-2 z-10">
             <Link
@@ -309,7 +309,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Center: Logo & Brand (Absolutely centered) */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none md:pointer-events-auto">
+          <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-3 pointer-events-none md:pointer-events-auto">
             <div className="flex flex-col leading-tight">
               <span className="font-bold text-sm tracking-tight text-sheet-text">CollabSheet</span>
               {user && (

@@ -10,6 +10,8 @@ interface MeasurementCellProps {
   onActivate: () => void;
   onChange: (val: number | null) => void;
   onKeyDownNav: (e: React.KeyboardEvent) => void;
+  autoEdit?: boolean;
+  onAutoEditDone?: () => void;
 }
 
 function MeasurementCellComponent({
@@ -20,6 +22,8 @@ function MeasurementCellComponent({
   onActivate,
   onChange,
   onKeyDownNav,
+  autoEdit = false,
+  onAutoEditDone,
 }: MeasurementCellProps) {
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -107,9 +111,26 @@ function MeasurementCellComponent({
     }
   };
 
+  const handleActivateClick = useCallback(() => {
+    if (!isActive) {
+      onActivate();
+      return;
+    }
+    if (!editing && !isCalculated) {
+      startEditing();
+    }
+  }, [isActive, onActivate, editing, isCalculated, startEditing]);
+
   const handleDoubleClick = useCallback(() => {
     startEditing();
   }, [startEditing]);
+
+  useEffect(() => {
+    if (autoEdit && isActive && !editing && !isCalculated) {
+      startEditing();
+      onAutoEditDone?.();
+    }
+  }, [autoEdit, isActive, editing, isCalculated, startEditing, onAutoEditDone]);
 
   const displayVal = isCalculated
     ? calculatedValue > 0
@@ -123,7 +144,7 @@ function MeasurementCellComponent({
     <div
       ref={cellRef}
       tabIndex={0}
-      onClick={onActivate}
+      onClick={handleActivateClick}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       className={`relative h-9 px-3 flex items-center justify-end text-xs font-mono border-r border-b border-sheet-border select-none transition-colors outline-none ${

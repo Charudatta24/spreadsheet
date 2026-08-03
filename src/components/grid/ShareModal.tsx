@@ -81,7 +81,7 @@ export function ShareModal({
       />
       
       {/* Modal */}
-      <div className="relative bg-sheet-surface border border-sheet-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="relative bg-sheet-surface border border-sheet-border rounded-2xl shadow-2xl w-full max-w-[min(95vw,28rem)] max-h-[calc(100vh-4rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-sheet-border">
           <h2 className="text-sm font-semibold text-sheet-text flex items-center gap-2">

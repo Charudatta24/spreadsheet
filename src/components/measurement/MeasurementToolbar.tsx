@@ -61,10 +61,10 @@ export function MeasurementToolbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-sheet-surface border-b border-sheet-border px-4 py-2 flex flex-col gap-2">
+    <header className="sticky top-0 z-30 bg-sheet-surface border-b border-sheet-border px-4 py-2 flex flex-col gap-3 sm:px-4">
       {/* Top row */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 flex-wrap items-center gap-3 min-w-0">
           <Link
             href="/measurement-sheets"
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
@@ -86,7 +86,7 @@ export function MeasurementToolbar({
               onBlur={handleTitleCommit}
               onKeyDown={(e) => e.key === "Enter" && handleTitleCommit()}
               autoFocus
-              className="px-2 py-1 text-sm font-semibold text-sheet-text bg-white border border-emerald-500 rounded outline-none w-64"
+              className="px-2 py-1 text-sm font-semibold text-sheet-text bg-white border border-emerald-500 rounded outline-none w-full max-w-[18rem]"
             />
           ) : (
             <h1

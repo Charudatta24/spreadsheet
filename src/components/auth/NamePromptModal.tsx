@@ -45,7 +45,7 @@ export function NamePromptModal() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-sheet-border/50">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-[min(95vw,420px)] w-full p-6 border border-sheet-border/50">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-sheet-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-sheet-accent">
             <span className="text-2xl font-bold">👋</span>

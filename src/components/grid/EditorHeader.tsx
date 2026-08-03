@@ -65,7 +65,7 @@ export function EditorHeader({
   }
 
   return (
-    <header className="h-12 border-b border-sheet-border bg-sheet-surface relative shrink-0 flex items-center px-3 gap-2">
+    <header className="h-12 border-b border-sheet-border bg-sheet-surface relative shrink-0 flex items-center gap-2 px-3 sm:px-4">
       {/* Left: Navigation Actions */}
       <div className="flex items-center gap-1.5 z-10">
         <button
@@ -78,8 +78,8 @@ export function EditorHeader({
       </div>
 
       {/* Center: Title & Status (Absolutely centered) */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 pointer-events-none md:pointer-events-auto max-w-[40%]">
-        <div className="flex flex-col items-center">
+      <div className="flex-1 min-w-0 flex justify-center">
+        <div className="flex flex-col items-center min-w-0">
           {editing ? (
             <input
               ref={inputRef}
@@ -94,12 +94,12 @@ export function EditorHeader({
                 }
               }}
               autoFocus
-              className="bg-sheet-bg border border-sheet-accent rounded px-3 py-0.5 text-sm font-bold text-sheet-text text-center outline-none w-64 shadow-lg shadow-sheet-accent/10"
+              className="bg-sheet-bg border border-sheet-accent rounded px-3 py-0.5 text-sm font-bold text-sheet-text text-center outline-none w-full max-w-[18rem] shadow-lg shadow-sheet-accent/10"
             />
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="group flex items-center gap-2 text-sm font-bold text-sheet-text hover:text-white transition-colors"
+              className="group flex min-w-0 items-center gap-2 text-sm font-bold text-sheet-text hover:text-sheet-accent transition-colors truncate"
             >
               <span className="truncate max-w-[200px] lg:max-w-xs">{localTitle || "Untitled Spreadsheet"}</span>
               <div className="w-4 h-4 rounded bg-sheet-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -77,7 +77,7 @@ export function ChatBox({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-4 bottom-4 w-[360px] h-[430px] bg-white border border-sheet-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
+    <div className="fixed right-4 bottom-4 z-50 w-[min(100vw-2rem,360px)] max-w-[95vw] h-[min(100vh-2rem,430px)] max-h-[95vh] bg-white border border-sheet-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-sheet-border bg-sheet-bg">
         <div className="font-semibold text-sm">Chat</div>
         <button onClick={onClose} className="text-sheet-muted hover:text-sheet-accent">✕</button>

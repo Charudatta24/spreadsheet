@@ -20,6 +20,7 @@ export function MeasurementGrid({
   const [activeCell, setActiveCell] = useState<{ rowIdx: number; colKey: string } | null>(
     { rowIdx: 0, colKey: "A" }
   );
+  const [pendingEdit, setPendingEdit] = useState<{ rowIdx: number; colKey: string } | null>(null);
 
   const isLocal = locationType === "local";
   const columns = isLocal
@@ -97,8 +98,10 @@ export function MeasurementGrid({
       let targetRow = rowIdx;
       let targetColKey = colKey;
 
+      let shouldAutoEdit = false;
       if (e.key === "Enter") {
         e.preventDefault();
+        shouldAutoEdit = true;
         if (isLocal) {
           // A -> B -> Next Row A
           if (colKey === "A") {
@@ -119,6 +122,7 @@ export function MeasurementGrid({
         }
       } else if (e.key === "Tab") {
         e.preventDefault();
+        shouldAutoEdit = !e.shiftKey;
         if (e.shiftKey) {
           if (isLocal) {
             if (colKey === "B") targetColKey = "A";
@@ -180,6 +184,9 @@ export function MeasurementGrid({
       }
 
       setActiveCell({ rowIdx: targetRow, colKey: targetColKey });
+      if (shouldAutoEdit) {
+        setPendingEdit({ rowIdx: targetRow, colKey: targetColKey });
+      }
     },
     [isLocal, rows.length, addRow]
   );
@@ -190,7 +197,7 @@ export function MeasurementGrid({
     <div className="w-full flex flex-col bg-sheet-surface rounded-xl border border-sheet-border overflow-hidden shadow-sm">
       {/* Grid Table Container */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-xs">
+        <table className="min-w-[600px] w-full border-collapse text-xs">
           <thead>
             <tr className="bg-sheet-header text-sheet-text border-b-2 border-sheet-border">
               <th className="w-12 px-2 py-2 text-center font-bold text-slate-500 border-r border-sheet-border">
@@ -300,10 +307,10 @@ export function MeasurementGrid({
       </div>
 
       {/* Grid Footer Controls */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-sheet-border flex items-center justify-start">
+      <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-sheet-border flex flex-col sm:flex-row items-center justify-start gap-2">
         <button
           onClick={addRow}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
         >
           <Plus size={14} />
           Add Row
