@@ -51,6 +51,11 @@ import type {
 } from "@/types";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
 import { format } from "date-fns";
+import {
+  getAutoDeleteTimestamp,
+  isSheetPastRetention,
+  purgeExpiredOwnerSheets,
+} from "@/lib/measurementRetention";
 
 interface SelectedPerson {
   userId: string;
@@ -171,6 +176,19 @@ function MeasurementDashboardContent() {
 
     const sheetsMap = new Map<string, MeasurementSheet>();
 
+    const publish = () => {
+      const all = Array.from(sheetsMap.values()).filter((s) => !isSheetPastRetention(s));
+      setSheets(all);
+      setLoading(false);
+    };
+
+    // Permanently remove owner sheets older than 2 months
+    if (user.accountType === "owner") {
+      purgeExpiredOwnerSheets(user.uid).catch((err) =>
+        console.error("Failed to purge expired measurement sheets", err)
+      );
+    }
+
     const qOwner = query(
       collection(db, "measurementSheets"),
       where("userId", "==", user.uid)
@@ -185,11 +203,18 @@ function MeasurementDashboardContent() {
         if (change.type === "removed") {
           sheetsMap.delete(change.doc.id);
         } else {
-          sheetsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as MeasurementSheet);
+          const data = { id: change.doc.id, ...change.doc.data() } as MeasurementSheet;
+          if (isSheetPastRetention(data)) {
+            sheetsMap.delete(change.doc.id);
+            if (data.userId === user.uid) {
+              deleteDoc(doc(db, "measurementSheets", change.doc.id)).catch(() => undefined);
+            }
+          } else {
+            sheetsMap.set(change.doc.id, data);
+          }
         }
       });
-      setSheets(Array.from(sheetsMap.values()));
-      setLoading(false);
+      publish();
     });
 
     const unsub2 = onSnapshot(qPart, (snap) => {
@@ -197,11 +222,15 @@ function MeasurementDashboardContent() {
         if (change.type === "removed") {
           sheetsMap.delete(change.doc.id);
         } else {
-          sheetsMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() } as MeasurementSheet);
+          const data = { id: change.doc.id, ...change.doc.data() } as MeasurementSheet;
+          if (isSheetPastRetention(data)) {
+            sheetsMap.delete(change.doc.id);
+          } else {
+            sheetsMap.set(change.doc.id, data);
+          }
         }
       });
-      setSheets(Array.from(sheetsMap.values()));
-      setLoading(false);
+      publish();
     });
 
     return () => { unsub1(); unsub2(); };
@@ -392,6 +421,7 @@ function MeasurementDashboardContent() {
       favorite: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      autoDeleteAt: getAutoDeleteTimestamp(),
       ...(category === "cutting"
         ? {
             cuttingData: {
@@ -624,6 +654,7 @@ function MeasurementDashboardContent() {
         favorite: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        autoDeleteAt: getAutoDeleteTimestamp(),
       };
       await addDoc(collection(db, "measurementSheets"), copyData);
     } catch (err) {

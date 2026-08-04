@@ -14,6 +14,7 @@ import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingPortal } from "@/components/ui/LoadingPortal";
 import { getUserNickname, setUserProfile } from "@/lib/firebase/firestore";
 import { NicknameModal } from "./NicknameModal";
+import { markOwnerRetentionNoticePending } from "@/lib/measurementRetention";
 import type { AppUser } from "@/types";
 
 const provider = new GoogleAuthProvider();
@@ -47,6 +48,9 @@ export function LoginScreen() {
   const { setUser } = useAuthStore();
 
   async function finishSignIn(uid: string, displayName: string, email: string | null, photoURL: string | null) {
+    // Fresh Google login — owners will see the 2-month retention notice after auth completes
+    markOwnerRetentionNoticePending();
+
     const color = colorForUid(uid);
 
     let savedNickname: string | null = null;

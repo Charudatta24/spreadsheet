@@ -289,6 +289,8 @@ export type MeasurementSheet = {
   deleted?: boolean;
   deletedAt?: any;        // Firestore Timestamp — when soft-deleted
   permanentDeleteAt?: any; // Firestore Timestamp — deletedAt + 5 days
+  /** Owner sheets: permanent DB delete after creation + 2 months */
+  autoDeleteAt?: any;
   // Cutting Sheet data
   cuttingData?: CuttingData;
 };
