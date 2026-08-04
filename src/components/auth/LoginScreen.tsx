@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { useState, useEffect } from "react";
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  type AuthError,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { colorForUid } from "@/lib/sync/authStore";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -12,6 +18,27 @@ import type { AppUser } from "@/types";
 
 const provider = new GoogleAuthProvider();
 
+function authErrorMessage(err: unknown): string {
+  const code = (err as AuthError)?.code;
+  switch (code) {
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+      return "";
+    case "auth/popup-blocked":
+      return "Popup was blocked. Allow popups for this site and try again.";
+    case "auth/unauthorized-domain":
+      return "This domain is not authorized for Google sign-in. Add it in Firebase Auth settings.";
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again.";
+    case "auth/internal-error":
+      return "Sign-in was interrupted. Please try again.";
+    default:
+      return code
+        ? `Google sign-in failed (${code}). Try again.`
+        : "Google sign-in failed. Try again.";
+  }
+}
+
 export function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,42 +46,103 @@ export function LoginScreen() {
   const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
   const { setUser } = useAuthStore();
 
-  async function handleGoogle() {
-    setLoading(true);
-    setError("");
+  async function finishSignIn(uid: string, displayName: string, email: string | null, photoURL: string | null) {
+    const color = colorForUid(uid);
+
+    let savedNickname: string | null = null;
     try {
-      const result = await signInWithPopup(auth, provider);
-      const u = result.user;
-      const color = colorForUid(u.uid);
+      savedNickname = await getUserNickname(uid);
+    } catch (e) {
+      console.error("Failed to fetch nickname after sign-in", e);
+    }
 
-      // Check for a previously saved nickname
-      const savedNickname = await getUserNickname(u.uid);
+    const user: AppUser = {
+      uid,
+      displayName: displayName || "User",
+      email,
+      photoURL,
+      color,
+      isAnonymous: false,
+      nickname: savedNickname ?? undefined,
+    };
 
-      const user: AppUser = {
-        uid: u.uid,
-        displayName: u.displayName ?? "User",
-        email: u.email,
-        photoURL: u.photoURL,
-        color,
-        isAnonymous: false,
-        nickname: savedNickname ?? undefined,
-      };
-
-      if (savedNickname) {
-        // Already has a nickname — proceed directly
-        setUser(user);
-        // Ensure profile is up to date
+    if (savedNickname) {
+      setUser(user);
+      try {
         await setUserProfile(user.uid, {
           displayName: user.displayName,
           email: user.email,
-          nickname: savedNickname
+          nickname: savedNickname,
         });
-      } else {
-        // First time — ask for a nickname
-        setPendingUser(user);
+      } catch (e) {
+        console.error("Failed to update profile after sign-in", e);
       }
-    } catch {
-      setError("Google sign-in failed. Try again.");
+    } else {
+      setPendingUser(user);
+    }
+  }
+
+  // Complete redirect-based Google sign-in (fallback when popup is blocked)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (cancelled || !result?.user) return;
+        setLoading(true);
+        const u = result.user;
+        await finishSignIn(u.uid, u.displayName ?? "User", u.email, u.photoURL);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Google redirect sign-in failed", err);
+          setError(authErrorMessage(err) || "Google sign-in failed. Try again.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleGoogle() {
+    setError("");
+    try {
+      // Open the popup immediately from the click handler.
+      // Do not set loading / re-render first — that breaks the user gesture
+      // and often causes popup-blocked or popup-closed-by-user errors.
+      const result = await signInWithPopup(auth, provider);
+      setLoading(true);
+      const u = result.user;
+      await finishSignIn(u.uid, u.displayName ?? "User", u.email, u.photoURL);
+    } catch (err) {
+      const code = (err as AuthError)?.code;
+      console.error("Google sign-in failed", err);
+
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return;
+      }
+
+      // Fall back to redirect when popup cannot be used
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment" ||
+        code === "auth/internal-error"
+      ) {
+        try {
+          setLoading(true);
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          console.error("Google redirect fallback failed", redirectErr);
+          setError(authErrorMessage(redirectErr) || "Google sign-in failed. Try again.");
+          return;
+        }
+      }
+
+      setError(authErrorMessage(err) || "Google sign-in failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -62,11 +150,15 @@ export function LoginScreen() {
 
   async function handleNicknameConfirm(nickname: string) {
     if (!pendingUser) return;
-    await setUserProfile(pendingUser.uid, {
-      displayName: pendingUser.displayName,
-      email: pendingUser.email,
-      nickname
-    });
+    try {
+      await setUserProfile(pendingUser.uid, {
+        displayName: pendingUser.displayName,
+        email: pendingUser.email,
+        nickname,
+      });
+    } catch (e) {
+      console.error("Failed to save nickname", e);
+    }
     setUser({ ...pendingUser, nickname });
     setPendingUser(null);
   }
