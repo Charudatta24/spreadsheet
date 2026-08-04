@@ -58,20 +58,30 @@ export default function MeasurementSheetEditorPage() {
   // Derive current user's permissions from the sheet
   const myPersonEntry = useMemo(() => {
     if (!sheet || !user) return null;
-    return sheet.people?.find((p) => p.userId === user.uid) ?? null;
+    return (
+      sheet.people?.find((p) => p.userId === user.uid) ??
+      sheet.invitedWorkers?.find((p) => p.userId === user.uid) ??
+      sheet.cuttingData?.polishes?.find((p) => p.userId === user.uid) ??
+      null
+    );
   }, [sheet, user]);
 
   const myPermissions: WorkerPermissions | undefined = useMemo(() => {
     if (isOwner) return undefined;
-    return myPersonEntry?.permissions;
+    return (myPersonEntry as any)?.permissions;
   }, [isOwner, myPersonEntry]);
 
   // Security guard: redirect if not authorized
   useEffect(() => {
     if (!loading && sheet && user) {
       const isSheetOwner = sheet.userId === user.uid;
-      const myEntry = sheet.people?.find((p) => p.userId === user.uid);
-      const isParticipant = myEntry?.status === "accepted";
+      const myEntry =
+        sheet.people?.find((p) => p.userId === user.uid) ||
+        sheet.invitedWorkers?.find((p) => p.userId === user.uid) ||
+        sheet.cuttingData?.polishes?.find((p) => p.userId === user.uid);
+      const isParticipant =
+        myEntry?.status === "accepted" ||
+        (sheet.participantIds?.includes(user.uid) && myEntry?.status !== "declined");
 
       if (!isSheetOwner && !isParticipant) {
         console.warn("Unauthorized access to measurement sheet");

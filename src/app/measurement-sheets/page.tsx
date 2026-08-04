@@ -256,7 +256,7 @@ function MeasurementDashboardContent() {
 
   // Create new Sheet
   const handleCreateSheet = async () => {
-    if (!user || !isFormValid || isCreating) return;
+    if (!user || user.accountType === "non-owner" || !isFormValid || isCreating) return;
 
     const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
@@ -339,7 +339,13 @@ function MeasurementDashboardContent() {
     const dateISO = parseSheetDateISO(formDate);
     const dateTimestamp = !isNaN(parsedDate.getTime()) ? Timestamp.fromDate(parsedDate) : serverTimestamp();
 
-    const docData = {
+    const invitedWorkers = chosenPeople.map((p) => ({
+      userId: p.userId,
+      name: p.name,
+      status: "pending" as const,
+    }));
+
+    const docData: any = {
       userId: user.uid,
       creatorName: user.displayName || user.email || "Unknown",
       title: `${titleName} Measurements`,
@@ -353,6 +359,7 @@ function MeasurementDashboardContent() {
       startingSerialNumber: sno,
       numSlabs: category === "customer" ? slabsValue : 1,
       people,
+      invitedWorkers,
       participantIds,
       total: 0,
       favorite: false,
@@ -363,7 +370,7 @@ function MeasurementDashboardContent() {
             cuttingData: {
               numMachines: safeMachinesValue,
               numPolishes: chosenPeople.length,
-              polishes: chosenPeople.map((p) => ({ userId: p.userId || "", name: p.name || "" })),
+              polishes: chosenPeople.map((p) => ({ userId: p.userId || "", name: p.name || "", status: "pending" as const })),
               machines: Array.from({ length: safeMachinesValue }, (_, i) => ({
                 id: `machine_${i + 1}`,
                 name: `Machine ${i + 1}`,
@@ -391,13 +398,24 @@ function MeasurementDashboardContent() {
   const handleAcceptRequest = async (sheet: MeasurementSheet) => {
     if (!user) return;
     try {
-      const updatedPeople = sheet.people.map((p) =>
+      const updatedPeople = sheet.people?.map((p) =>
         p.userId === user.uid ? { ...p, status: "accepted" as const } : p
       );
-      await updateDoc(doc(db, "measurementSheets", sheet.id), {
+      const updatedInvited = sheet.invitedWorkers?.map((p) =>
+        p.userId === user.uid ? { ...p, status: "accepted" as const } : p
+      );
+      const updatedPolishes = sheet.cuttingData?.polishes?.map((p) =>
+        p.userId === user.uid ? { ...p, status: "accepted" as const } : p
+      );
+
+      const updatePayload: any = {
         people: updatedPeople,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (updatedInvited) updatePayload.invitedWorkers = updatedInvited;
+      if (updatedPolishes) updatePayload["cuttingData.polishes"] = updatedPolishes;
+
+      await updateDoc(doc(db, "measurementSheets", sheet.id), updatePayload);
     } catch (err) {
       console.error("Error accepting request:", err);
     }
@@ -406,17 +424,28 @@ function MeasurementDashboardContent() {
   const handleDeclineRequest = async (sheet: MeasurementSheet) => {
     if (!user) return;
     try {
-      const updatedPeople = sheet.people.map((p) =>
+      const updatedPeople = sheet.people?.map((p) =>
+        p.userId === user.uid ? { ...p, status: "declined" as const } : p
+      );
+      const updatedInvited = sheet.invitedWorkers?.map((p) =>
+        p.userId === user.uid ? { ...p, status: "declined" as const } : p
+      );
+      const updatedPolishes = sheet.cuttingData?.polishes?.map((p) =>
         p.userId === user.uid ? { ...p, status: "declined" as const } : p
       );
       const updatedParticipantIds = (sheet.participantIds || []).filter(
         (id) => id !== user.uid
       );
-      await updateDoc(doc(db, "measurementSheets", sheet.id), {
+
+      const updatePayload: any = {
         people: updatedPeople,
         participantIds: updatedParticipantIds,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (updatedInvited) updatePayload.invitedWorkers = updatedInvited;
+      if (updatedPolishes) updatePayload["cuttingData.polishes"] = updatedPolishes;
+
+      await updateDoc(doc(db, "measurementSheets", sheet.id), updatePayload);
     } catch (err) {
       console.error("Error declining request:", err);
     }
@@ -541,14 +570,28 @@ function MeasurementDashboardContent() {
     return sheetCategory === activeSheetCategory;
   });
 
+  const getWorkerStatus = (sheet: MeasurementSheet) => {
+    if (!user?.uid) return undefined;
+    const pEntry = sheet.people?.find((p) => p.userId === user.uid);
+    if (pEntry?.status) return pEntry.status;
+
+    const iEntry = sheet.invitedWorkers?.find((p) => p.userId === user.uid);
+    if (iEntry?.status) return iEntry.status;
+
+    const polEntry = sheet.cuttingData?.polishes?.find((p) => p.userId === user.uid);
+    if (polEntry?.status) return polEntry.status;
+
+    return undefined;
+  };
+
   // Separate: own vs pending vs accepted
   const mySheets = currentCategorySheets.filter((s) => s.userId === user?.uid);
 
   // Worker invitations
   const pendingSheets = currentCategorySheets.filter((s) => {
     if (s.userId === user?.uid) return false;
-    const myEntry = s.people?.find((p) => p.userId === user?.uid);
-    if (myEntry?.status !== "pending") return false;
+    const status = getWorkerStatus(s);
+    if (status !== "pending") return false;
     // For worker sheets, past invitations are expired
     if (s.personType === "worker") {
       const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
@@ -559,8 +602,8 @@ function MeasurementDashboardContent() {
 
   const acceptedSharedSheets = currentCategorySheets.filter((s) => {
     if (s.userId === user?.uid) return false;
-    const myEntry = s.people?.find((p) => p.userId === user?.uid);
-    if (myEntry?.status !== "accepted") return false;
+    const status = getWorkerStatus(s);
+    if (status !== "accepted") return false;
     // For worker sheets, access is valid ONLY on that day
     if (s.personType === "worker") {
       const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
@@ -752,17 +795,19 @@ function MeasurementDashboardContent() {
             <span className="hidden sm:inline">{user.displayName}</span>
           </div>
 
-          <button
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
-            className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all active:scale-95"
-          >
-            <Plus size={15} />
-            <span className="hidden sm:inline">New Measurement Sheet</span>
-            <span className="sm:hidden">New</span>
-          </button>
+          {user.accountType !== "non-owner" && (
+            <button
+              onClick={() => {
+                resetForm();
+                setShowCreateModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all active:scale-95"
+            >
+              <Plus size={15} />
+              <span className="hidden sm:inline">New Measurement Sheet</span>
+              <span className="sm:hidden">New</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -884,14 +929,18 @@ function MeasurementDashboardContent() {
             <p className="text-sm font-semibold text-sheet-text">
               {search || locationTypeFilter !== "all"
                 ? "No measurement sheets match your search"
+                : user.accountType === "non-owner"
+                ? `No ${emptyStateLabel} measurement sheets assigned to you yet`
                 : `No ${emptyStateLabel} measurement sheets created yet`}
             </p>
-            <button
-              onClick={() => { resetForm(); setShowCreateModal(true); }}
-              className="mt-4 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
-            >
-              <Plus size={15} /><span>Create New Sheet</span>
-            </button>
+            {user.accountType !== "non-owner" && (
+              <button
+                onClick={() => { resetForm(); setShowCreateModal(true); }}
+                className="mt-4 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
+              >
+                <Plus size={15} /><span>Create New Sheet</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

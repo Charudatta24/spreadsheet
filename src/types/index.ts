@@ -250,7 +250,7 @@ export type CuttingMachineSection = {
 export type CuttingData = {
   numMachines: number;
   numPolishes: number;
-  polishes: { userId?: string; name: string }[];
+  polishes: { userId?: string; name: string; status?: "pending" | "accepted" | "declined" }[];
   machines: CuttingMachineSection[];
   updatedAt?: string;
 };
@@ -269,6 +269,7 @@ export type MeasurementSheet = {
   sheetType: SheetType;
   numSlabs?: number;
   people: PersonMeasurement[];
+  invitedWorkers?: { userId: string; name: string; status?: "pending" | "accepted" | "declined"; permissions?: WorkerPermissions }[];
   participantIds?: string[];
   total: number;
   favorite?: boolean;
