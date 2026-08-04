@@ -3,7 +3,12 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import type { LocationType, PersonType, MeasurementRow, WorkerPermissions } from "@/types";
 import { MeasurementCell } from "./MeasurementCell";
-import { calculateRowResult, calculatePersonTotal } from "@/lib/measurementExport";
+import {
+  calculateRowResult,
+  calculatePersonTotal,
+  calculateNationalCmResult,
+  calculatePersonCmTotal,
+} from "@/lib/measurementExport";
 import { Plus, Trash2, MessageSquare, X, Check, AlertCircle } from "lucide-react";
 
 interface MeasurementGridProps {
@@ -44,6 +49,7 @@ export function MeasurementGrid({
   const [errorMessage, setErrorMessage] = useState("");
 
   const isLocal = locationType === "local";
+  const showNationalCmCalc = !isLocal && isCustomerSheet;
   const columns = isLocal
     ? [
         { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
@@ -59,6 +65,9 @@ export function MeasurementGrid({
         { key: "C", label: "Height", isCalc: false },
         { key: "D", label: "Height (CM)", isCalc: false },
         { key: "E", label: "Calculated", isCalc: true },
+        ...(showNationalCmCalc
+          ? [{ key: "F", label: "Calculated (CM)", isCalc: true, isCalcCm: true }]
+          : []),
         ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ];
 
@@ -231,6 +240,9 @@ export function MeasurementGrid({
   );
 
   const totalVal = calculatePersonTotal(locationType, rows);
+  const cmTotalVal = showNationalCmCalc ? calculatePersonCmTotal(rows) : 0;
+  const firstCalcIdx = columns.findIndex((c) => c.isCalc);
+  const footerLabelColSpan = firstCalcIdx > 0 ? firstCalcIdx : Math.max(1, columns.length - 1);
 
   return (
     <div className="w-full flex flex-col bg-sheet-surface rounded-xl border border-sheet-border overflow-hidden shadow-sm">
@@ -265,6 +277,9 @@ export function MeasurementGrid({
           <tbody>
             {rows.map((row, rIdx) => {
               const rowResult = calculateRowResult(locationType, row.A, row.B, row.C);
+              const rowCmResult = showNationalCmCalc
+                ? calculateNationalCmResult(row.B, row.D)
+                : 0;
 
               return (
                 <tr key={rIdx} className="hover:bg-slate-50/50 transition-colors group">
@@ -295,12 +310,15 @@ export function MeasurementGrid({
                     }
 
                     if (col.isCalc) {
+                      const calcValue = (col as { isCalcCm?: boolean }).isCalcCm
+                        ? rowCmResult
+                        : rowResult;
                       return (
                         <td key={col.key} className="p-0">
                           <MeasurementCell
-                            value={rowResult}
+                            value={calcValue}
                             isCalculated={true}
-                            calculatedValue={rowResult}
+                            calculatedValue={calcValue}
                             isActive={isActive}
                             onActivate={() => setActiveCell({ rowIdx: rIdx, colKey: col.key })}
                             onChange={() => {}}
@@ -379,7 +397,7 @@ export function MeasurementGrid({
             <tr className="bg-slate-50 text-sheet-text border-t border-sheet-border">
               <td className="px-1 sm:px-2 py-2 text-center font-mono font-semibold text-slate-500 border-r border-sheet-border"></td>
               <td
-                colSpan={columns.length - 2}
+                colSpan={footerLabelColSpan}
                 className="px-2 sm:px-3 py-2 text-right font-semibold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs"
               >
                 TOTAL =
@@ -387,7 +405,12 @@ export function MeasurementGrid({
               <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
                 {totalVal}
               </td>
-              <td></td>
+              {showNationalCmCalc && (
+                <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
+                  {cmTotalVal}
+                </td>
+              )}
+              {isCustomerSheet && <td></td>}
               {canDeleteRows && <td></td>}
             </tr>
           </tfoot>

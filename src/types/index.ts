@@ -209,7 +209,9 @@ export type MeasurementRow = {
   B: number | null; // Height (Local) or Length in CM (National)
   C: number | null; // Calculated Value (Local) or Height (National)
   D?: number | null; // Height in CM (National)
-  E?: number | null; // Calculated Value (National)
+  E?: number | null; // Calculated Value (National) — (A * C) / 144
+  /** Customer National only — computed: (B * D) / 929 */
+  F?: number | null;
   remark?: string;
 };
 
@@ -250,7 +252,12 @@ export type CuttingMachineSection = {
 export type CuttingData = {
   numMachines: number;
   numPolishes: number;
-  polishes: { userId?: string; name: string; status?: "pending" | "accepted" | "declined" }[];
+  polishes: {
+    userId?: string;
+    name: string;
+    status?: "pending" | "accepted" | "declined";
+    permissions?: WorkerPermissions;
+  }[];
   machines: CuttingMachineSection[];
   updatedAt?: string;
 };

@@ -23,6 +23,39 @@ export function calculateRowResult(
 }
 
 /**
+ * Customer National only: Calculated (CM) = (Length CM * Height CM) / 929
+ */
+export function calculateNationalCmResult(
+  lengthCm: number | null | undefined,
+  heightCm: number | null | undefined
+): number {
+  if (
+    lengthCm == null ||
+    heightCm == null ||
+    isNaN(lengthCm) ||
+    isNaN(heightCm) ||
+    lengthCm === 0 ||
+    heightCm === 0
+  ) {
+    return 0;
+  }
+  return (lengthCm * heightCm) / 929;
+}
+
+/**
+ * Sum of Calculated (CM) for customer national rows.
+ */
+export function calculatePersonCmTotal(
+  rows: MeasurementSheet["people"][0]["rows"]
+): number {
+  let sum = 0;
+  for (const r of rows) {
+    sum += calculateNationalCmResult(r.B, r.D);
+  }
+  return sum;
+}
+
+/**
  * Calculates sum total for a person's rows.
  */
 export function calculatePersonTotal(
@@ -73,21 +106,52 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
       const pTotal = calculatePersonTotal("local", person.rows);
       sheetData.push(["", "", "Total:", pTotal, ""]);
     } else {
-      sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated", "Remark"]);
-      person.rows.forEach((r, i) => {
-        const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+      const isCustomerNational = sheet.personType === "customer";
+      if (isCustomerNational) {
         sheetData.push([
-          r.serialNumber ?? (i + 1),
-          r.A ?? "",
-          r.B ?? "",
-          r.C ?? "",
-          r.D ?? "",
-          calcVal > 0 ? calcVal : "",
-          r.remark ?? "",
+          "S.No.",
+          "Length",
+          "Length (CM)",
+          "Height",
+          "Height (CM)",
+          "Calculated",
+          "Calculated (CM)",
+          "Remark",
         ]);
-      });
-      const pTotal = calculatePersonTotal("national", person.rows);
-      sheetData.push(["", "", "", "", "Total:", pTotal, ""]);
+        person.rows.forEach((r, i) => {
+          const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+          const calcCmVal = calculateNationalCmResult(r.B, r.D);
+          sheetData.push([
+            r.serialNumber ?? (i + 1),
+            r.A ?? "",
+            r.B ?? "",
+            r.C ?? "",
+            r.D ?? "",
+            calcVal > 0 ? calcVal : "",
+            calcCmVal > 0 ? calcCmVal : "",
+            r.remark ?? "",
+          ]);
+        });
+        const pTotal = calculatePersonTotal("national", person.rows);
+        const pCmTotal = calculatePersonCmTotal(person.rows);
+        sheetData.push(["", "", "", "", "Total:", pTotal, pCmTotal, ""]);
+      } else {
+        sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated", "Remark"]);
+        person.rows.forEach((r, i) => {
+          const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+          sheetData.push([
+            r.serialNumber ?? (i + 1),
+            r.A ?? "",
+            r.B ?? "",
+            r.C ?? "",
+            r.D ?? "",
+            calcVal > 0 ? calcVal : "",
+            r.remark ?? "",
+          ]);
+        });
+        const pTotal = calculatePersonTotal("national", person.rows);
+        sheetData.push(["", "", "", "", "Total:", pTotal, ""]);
+      }
     }
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
@@ -96,6 +160,17 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
     const colWidths =
       sheet.locationType === "local"
         ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 24 }]
+        : sheet.personType === "customer"
+        ? [
+            { wch: 8 },
+            { wch: 12 },
+            { wch: 14 },
+            { wch: 12 },
+            { wch: 14 },
+            { wch: 16 },
+            { wch: 18 },
+            { wch: 24 },
+          ]
         : [{ wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }];
     ws["!cols"] = colWidths;
 
@@ -136,12 +211,28 @@ export function exportMeasurementToCSV(sheet: MeasurementSheet, personIndex = 0)
     });
     rows.push(`,,,TOTAL: ${calculatePersonTotal("local", person.rows)}`);
   } else {
-    rows.push(`No.,A - Length,B - Length CM,C - Height,D - Height CM,E - Calculated`);
-    person.rows.forEach((r, i) => {
-      const calc = calculateRowResult("national", r.A, r.B, r.C);
-      rows.push(`${i + 1},${r.A ?? ""},${r.B ?? ""},${r.C ?? ""},${r.D ?? ""},${calc > 0 ? calc : ""}`);
-    });
-    rows.push(`,,,,,TOTAL: ${calculatePersonTotal("national", person.rows)}`);
+    if (sheet.personType === "customer") {
+      rows.push(
+        `No.,A - Length,B - Length CM,C - Height,D - Height CM,E - Calculated,F - Calculated CM`
+      );
+      person.rows.forEach((r, i) => {
+        const calc = calculateRowResult("national", r.A, r.B, r.C);
+        const calcCm = calculateNationalCmResult(r.B, r.D);
+        rows.push(
+          `${i + 1},${r.A ?? ""},${r.B ?? ""},${r.C ?? ""},${r.D ?? ""},${calc > 0 ? calc : ""},${calcCm > 0 ? calcCm : ""}`
+        );
+      });
+      rows.push(
+        `,,,,,TOTAL: ${calculatePersonTotal("national", person.rows)},${calculatePersonCmTotal(person.rows)}`
+      );
+    } else {
+      rows.push(`No.,A - Length,B - Length CM,C - Height,D - Height CM,E - Calculated`);
+      person.rows.forEach((r, i) => {
+        const calc = calculateRowResult("national", r.A, r.B, r.C);
+        rows.push(`${i + 1},${r.A ?? ""},${r.B ?? ""},${r.C ?? ""},${r.D ?? ""},${calc > 0 ? calc : ""}`);
+      });
+      rows.push(`,,,,,TOTAL: ${calculatePersonTotal("national", person.rows)}`);
+    }
   }
 
   const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });

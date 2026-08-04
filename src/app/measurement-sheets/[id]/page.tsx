@@ -56,8 +56,16 @@ export default function MeasurementSheetEditorPage() {
   }, [isOwner, todayISO, sheetDateISO]);
 
   // Derive current user's permissions from the sheet
+  // Cutting: invitees live in invitedWorkers / cuttingData.polishes (people = machines)
   const myPersonEntry = useMemo(() => {
     if (!sheet || !user) return null;
+    if (sheet.sheetCategory === "cutting") {
+      return (
+        sheet.invitedWorkers?.find((p) => p.userId === user.uid) ??
+        sheet.cuttingData?.polishes?.find((p) => p.userId === user.uid) ??
+        null
+      );
+    }
     return (
       sheet.people?.find((p) => p.userId === user.uid) ??
       sheet.invitedWorkers?.find((p) => p.userId === user.uid) ??
@@ -68,7 +76,17 @@ export default function MeasurementSheetEditorPage() {
 
   const myPermissions: WorkerPermissions | undefined = useMemo(() => {
     if (isOwner) return undefined;
-    return (myPersonEntry as any)?.permissions;
+    const perms = (myPersonEntry as { permissions?: WorkerPermissions } | null)?.permissions;
+    return (
+      perms ?? {
+        canView: true,
+        canModifyMeasurements: true,
+        canModifySerialNumbers: false,
+        canModifyRemarks: true,
+        canAddRows: true,
+        canDeleteRows: false,
+      }
+    );
   }, [isOwner, myPersonEntry]);
 
   // Security guard: redirect if not authorized
@@ -89,13 +107,19 @@ export default function MeasurementSheetEditorPage() {
         sheet.people?.find((p) => p.userId === user.uid) ||
         sheet.invitedWorkers?.find((p) => p.userId === user.uid) ||
         sheet.cuttingData?.polishes?.find((p) => p.userId === user.uid);
+      const inParticipantIds = sheet.participantIds?.includes(user.uid) === true;
       const isParticipant =
         myEntry?.status === "accepted" ||
-        (sheet.participantIds?.includes(user.uid) && myEntry?.status !== "declined");
+        (inParticipantIds && myEntry?.status !== "declined") ||
+        (inParticipantIds && !myEntry);
 
       if (!isSheetOwner && !isParticipant) {
         console.warn("Unauthorized access to measurement sheet");
-        router.replace("/measurement-sheets");
+        const fallback =
+          user.accountType === "non-owner" && user.workType
+            ? `/measurement-sheets?type=${user.workType}`
+            : "/measurement-sheets";
+        router.replace(fallback);
       }
     }
   }, [loading, sheet, user, router]);
@@ -124,10 +148,25 @@ export default function MeasurementSheetEditorPage() {
     updateSheet((prev) => ({ ...prev, title: newTitle }));
   };
 
-  // Handle permissions update (owner only)
+  // Handle permissions update (owner only) — never apply to cutting machine tabs
   const handleUpdatePermissions = (personIdx: number, newPerms: WorkerPermissions) => {
     if (!isOwner) return;
     updateSheet((prev) => {
+      if (prev.sheetCategory === "cutting") {
+        const invitees = [...(prev.invitedWorkers || [])];
+        if (!invitees[personIdx]) return prev;
+        invitees[personIdx] = { ...invitees[personIdx], permissions: newPerms };
+        const polishes = (prev.cuttingData?.polishes || []).map((p) =>
+          p.userId === invitees[personIdx].userId ? { ...p, permissions: newPerms } : p
+        );
+        return {
+          ...prev,
+          invitedWorkers: invitees,
+          cuttingData: prev.cuttingData
+            ? { ...prev.cuttingData, polishes }
+            : prev.cuttingData,
+        };
+      }
       const updatedPeople = [...prev.people];
       if (updatedPeople[personIdx]) {
         updatedPeople[personIdx] = { ...updatedPeople[personIdx], permissions: newPerms };
@@ -192,7 +231,9 @@ export default function MeasurementSheetEditorPage() {
           <h2 className="text-xs sm:text-sm font-bold text-sheet-text flex items-center gap-2 truncate">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
             <span className="truncate">
-              {sheet.sheetType === "private"
+              {sheet.sheetCategory === "cutting"
+                ? `Machine: ${currentPerson?.name}`
+                : sheet.sheetType === "private"
                 ? `Person: ${currentPerson?.name}`
                 : `Measuring: ${currentPerson?.name}`}
             </span>

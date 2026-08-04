@@ -47,6 +47,7 @@ import type {
   SheetCategory,
   SheetType,
   PersonMeasurement,
+  WorkerPermissions,
 } from "@/types";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
 import { format } from "date-fns";
@@ -64,6 +65,45 @@ const EMPTY_ROWS = Array.from({ length: 5 }, (_, i) => ({
   D: null,
   E: null,
 }));
+
+const DEFAULT_WORKER_PERMISSIONS: WorkerPermissions = {
+  canView: true,
+  canModifyMeasurements: true,
+  canModifySerialNumbers: false,
+  canModifyRemarks: true,
+  canAddRows: true,
+  canDeleteRows: false,
+};
+
+/** Cutting sheets keep machines in `people`; invitees live in invitedWorkers / cuttingData.polishes. */
+function getCuttingInvitees(sheet: MeasurementSheet): PersonMeasurement[] {
+  const byUserId = new Map<string, PersonMeasurement>();
+
+  for (const p of sheet.cuttingData?.polishes || []) {
+    if (!p.userId) continue;
+    byUserId.set(p.userId, {
+      name: p.name,
+      userId: p.userId,
+      status: p.status || "pending",
+      permissions: p.permissions || DEFAULT_WORKER_PERMISSIONS,
+      rows: [],
+    });
+  }
+
+  for (const p of sheet.invitedWorkers || []) {
+    if (!p.userId) continue;
+    const existing = byUserId.get(p.userId);
+    byUserId.set(p.userId, {
+      name: p.name,
+      userId: p.userId,
+      status: p.status || existing?.status || "pending",
+      permissions: p.permissions || existing?.permissions || DEFAULT_WORKER_PERMISSIONS,
+      rows: [],
+    });
+  }
+
+  return Array.from(byUserId.values());
+}
 
 function parseSheetDateISO(dateStr: string): string {
   if (!dateStr) return format(new Date(), "yyyy-MM-dd");
@@ -291,18 +331,10 @@ function MeasurementDashboardContent() {
     const chosenPeople = selectedPeople.slice(0, np2).filter((p) => p.userId && p.name);
 
     if (category === "cutting") {
-      // Requirement 1: Create N machine tabs (Machine 1, Machine 2, ... Machine N)
+      // Machines stay in `people` as tabs; invited people are stored separately.
       people = Array.from({ length: safeMachinesValue }, (_, i) => ({
         name: `Machine ${i + 1}`,
         rows: buildRows(1),
-        permissions: {
-          canView: true,
-          canModifyMeasurements: true,
-          canModifySerialNumbers: false,
-          canModifyRemarks: true,
-          canAddRows: true,
-          canDeleteRows: false,
-        },
       }));
       // Only add invited people who were actually selected
       const invitedIds = chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id));
@@ -315,14 +347,7 @@ function MeasurementDashboardContent() {
         userId: p.userId,
         status: "pending" as const,
         rows: buildRows(sno),
-        permissions: {
-          canView: true,
-          canModifyMeasurements: true,
-          canModifySerialNumbers: false,
-          canModifyRemarks: true,
-          canAddRows: true,
-          canDeleteRows: false,
-        },
+        permissions: { ...DEFAULT_WORKER_PERMISSIONS },
       }));
       participantIds = Array.from(new Set([user.uid, ...chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id))]));
     }
@@ -336,14 +361,15 @@ function MeasurementDashboardContent() {
         ? `Polishes (${people.length})`
         : `Customers (${people.length})`;
 
-    const parsedDate = new Date(formDate);
     const dateISO = parseSheetDateISO(formDate);
-    const dateTimestamp = !isNaN(parsedDate.getTime()) ? Timestamp.fromDate(parsedDate) : serverTimestamp();
+    // Noon local avoids midnight timezone edge-cases in Firestore date-window rules
+    const dateTimestamp = Timestamp.fromDate(new Date(`${dateISO}T12:00:00`));
 
     const invitedWorkers = chosenPeople.map((p) => ({
       userId: p.userId,
       name: p.name,
       status: "pending" as const,
+      permissions: { ...DEFAULT_WORKER_PERMISSIONS },
     }));
 
     const docData: any = {
@@ -371,7 +397,12 @@ function MeasurementDashboardContent() {
             cuttingData: {
               numMachines: safeMachinesValue,
               numPolishes: chosenPeople.length,
-              polishes: chosenPeople.map((p) => ({ userId: p.userId || "", name: p.name || "", status: "pending" as const })),
+              polishes: chosenPeople.map((p) => ({
+                userId: p.userId || "",
+                name: p.name || "",
+                status: "pending" as const,
+                permissions: { ...DEFAULT_WORKER_PERMISSIONS },
+              })),
               machines: Array.from({ length: safeMachinesValue }, (_, i) => ({
                 id: `machine_${i + 1}`,
                 name: `Machine ${i + 1}`,
@@ -409,12 +440,17 @@ function MeasurementDashboardContent() {
         p.userId === user.uid ? { ...p, status: "accepted" as const } : p
       );
 
-      const updatePayload: any = {
-        people: updatedPeople,
+      const updatePayload: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
       };
+      if (updatedPeople) updatePayload.people = updatedPeople;
       if (updatedInvited) updatePayload.invitedWorkers = updatedInvited;
-      if (updatedPolishes) updatePayload["cuttingData.polishes"] = updatedPolishes;
+      if (updatedPolishes && sheet.cuttingData) {
+        updatePayload.cuttingData = {
+          ...sheet.cuttingData,
+          polishes: updatedPolishes,
+        };
+      }
 
       await updateDoc(doc(db, "measurementSheets", sheet.id), updatePayload);
     } catch (err) {
@@ -438,13 +474,18 @@ function MeasurementDashboardContent() {
         (id) => id !== user.uid
       );
 
-      const updatePayload: any = {
-        people: updatedPeople,
+      const updatePayload: Record<string, unknown> = {
         participantIds: updatedParticipantIds,
         updatedAt: serverTimestamp(),
       };
+      if (updatedPeople) updatePayload.people = updatedPeople;
       if (updatedInvited) updatePayload.invitedWorkers = updatedInvited;
-      if (updatedPolishes) updatePayload["cuttingData.polishes"] = updatedPolishes;
+      if (updatedPolishes && sheet.cuttingData) {
+        updatePayload.cuttingData = {
+          ...sheet.cuttingData,
+          polishes: updatedPolishes,
+        };
+      }
 
       await updateDoc(doc(db, "measurementSheets", sheet.id), updatePayload);
     } catch (err) {
@@ -457,18 +498,55 @@ function MeasurementDashboardContent() {
     if (!manageSheet || !user) return;
     setIsSavingManage(true);
     try {
-      const participantIds = Array.from(
-        new Set([
-          user.uid,
-          ...managePeople.map((p) => p.userId).filter((id): id is string => Boolean(id)),
-        ])
-      );
-      await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
-        title: manageTitle.trim() || manageSheet.title,
-        people: managePeople,
-        participantIds,
-        updatedAt: serverTimestamp(),
-      });
+      const isCutting = manageSheet.sheetCategory === "cutting";
+      const memberIds = managePeople
+        .map((p) => p.userId)
+        .filter((id): id is string => Boolean(id));
+      const participantIds = Array.from(new Set([user.uid, ...memberIds]));
+
+      if (isCutting) {
+        // Keep machine tabs in `people`; store invitees + permissions separately.
+        const invitedWorkers = managePeople
+          .filter((p) => p.userId)
+          .map((p) => ({
+            userId: p.userId as string,
+            name: p.name,
+            status: p.status || ("pending" as const),
+            permissions: p.permissions || DEFAULT_WORKER_PERMISSIONS,
+          }));
+
+        await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
+          title: manageTitle.trim() || manageSheet.title,
+          invitedWorkers,
+          participantIds,
+          cuttingData: {
+            ...(manageSheet.cuttingData || {
+              numMachines: manageSheet.people?.length || 1,
+              machines: (manageSheet.people || []).map((m, i) => ({
+                id: `machine_${i + 1}`,
+                name: m.name || `Machine ${i + 1}`,
+                assignedRows: [],
+              })),
+            }),
+            numPolishes: invitedWorkers.length,
+            polishes: invitedWorkers.map((p) => ({
+              userId: p.userId,
+              name: p.name,
+              status: p.status,
+              permissions: p.permissions,
+            })),
+            updatedAt: new Date().toISOString(),
+          },
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
+          title: manageTitle.trim() || manageSheet.title,
+          people: managePeople,
+          participantIds,
+          updatedAt: serverTimestamp(),
+        });
+      }
       setManageSheet(null);
     } catch (err) {
       console.error("Error saving managed sheet:", err);
@@ -958,14 +1036,22 @@ function MeasurementDashboardContent() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredSheets.map((s) => {
               const isOwner = s.userId === user.uid;
-              const myParticipantEntry = s.people?.find((p) => p.userId === user?.uid);
-              const hasMultipleParticipants = s.sheetType === "multiple" && s.people?.some((p) => p.status !== undefined);
+              const myStatus = getWorkerStatus(s);
+              const hasMultipleParticipants =
+                s.sheetType === "multiple" &&
+                (
+                  s.people?.some((p) => p.status !== undefined) ||
+                  s.invitedWorkers?.some((p) => p.status !== undefined) ||
+                  s.cuttingData?.polishes?.some((p) => p.status !== undefined)
+                );
 
               // Date check for worker sheet
               const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
               const isWorkerValidToday = s.personType !== "worker" || isOwner || sheetDateISO === todayISO;
 
-              const canOpen = isOwner || (myParticipantEntry?.status === "accepted" && isWorkerValidToday);
+              // Use invite status from people / invitedWorkers / cutting polishes (not people-only).
+              // Cutting sheets store invitees in invitedWorkers/polishes; people are machines.
+              const canOpen = isOwner || (myStatus === "accepted" && isWorkerValidToday);
 
               return (
                 <div
@@ -1007,9 +1093,24 @@ function MeasurementDashboardContent() {
                     <div className="text-xs text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-xl border border-sheet-border/60">
                       <div className="flex items-center gap-1 font-medium text-[11px] text-slate-400 mb-1">
                         {s.sheetType === "private" ? <User size={12} /> : <Users size={12} />}
-                        <span>{activeSheetCategory === "cutting" ? `Machines / People (${s.people.length}):` : s.people.length === 1 ? "Person:" : `People (${s.people.length}):`}</span>
+                        <span>
+                          {activeSheetCategory === "cutting"
+                            ? `Machines (${s.people.length})`
+                            : s.people.length === 1
+                            ? "Person:"
+                            : `People (${s.people.length}):`}
+                        </span>
                       </div>
-                      <p className="truncate font-semibold text-slate-700">{s.people.map((p) => p.name).join(", ")}</p>
+                      <p className="truncate font-semibold text-slate-700">
+                        {activeSheetCategory === "cutting"
+                          ? s.people.map((p) => p.name).join(", ")
+                          : s.people.map((p) => p.name).join(", ")}
+                      </p>
+                      {activeSheetCategory === "cutting" && getCuttingInvitees(s).length > 0 && (
+                        <p className="mt-1.5 text-[11px] text-slate-500 truncate">
+                          People: {getCuttingInvitees(s).map((p) => p.name).join(", ")}
+                        </p>
+                      )}
                     </div>
 
                     {/* Participant Status */}
@@ -1033,7 +1134,11 @@ function MeasurementDashboardContent() {
                           e.stopPropagation();
                           setManageSheet(s);
                           setManageTitle(s.title);
-                          setManagePeople([...s.people]);
+                          setManagePeople(
+                            s.sheetCategory === "cutting"
+                              ? getCuttingInvitees(s)
+                              : [...s.people]
+                          );
                         }}
                         className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200/80 transition-all active:scale-95"
                         title="Manage Members & Permissions"
@@ -1271,7 +1376,10 @@ function MeasurementDashboardContent() {
               </button>
             </div>
             <div className="space-y-2">
-              {statusModalSheet.people.map((p, i) => (
+              {(statusModalSheet.sheetCategory === "cutting"
+                ? getCuttingInvitees(statusModalSheet)
+                : statusModalSheet.people
+              ).map((p, i) => (
                 <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-sheet-border/60">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">
@@ -1284,6 +1392,9 @@ function MeasurementDashboardContent() {
                   </span>
                 </div>
               ))}
+              {statusModalSheet.sheetCategory === "cutting" && getCuttingInvitees(statusModalSheet).length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-3">No people invited yet.</p>
+              )}
             </div>
             <button onClick={() => setStatusModalSheet(null)} className="w-full px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border transition-colors">
               Close
@@ -1321,9 +1432,23 @@ function MeasurementDashboardContent() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-600">
-                  Members / Polishes ({managePeople.length})
+                  {manageSheet?.sheetCategory === "cutting"
+                    ? `People (${managePeople.length})`
+                    : `Members / Polishes (${managePeople.length})`}
                 </label>
+                {manageSheet?.sheetCategory === "cutting" && (
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Machines stay as tabs ({manageSheet.people?.length || 0})
+                  </span>
+                )}
               </div>
+
+              {manageSheet?.sheetCategory === "cutting" && (
+                <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                  Can Modify / View Only applies to invited people only — not to machines.
+                  People who open this sheet will see the same machine tabs.
+                </p>
+              )}
 
               {/* Add Member Dropdown */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
@@ -1342,24 +1467,20 @@ function MeasurementDashboardContent() {
                             name,
                             userId,
                             status: "pending",
-                            rows: EMPTY_ROWS.map((r, i) => ({
-                              rowNumber: i + 1,
-                              serialNumber: (manageSheet.startingSerialNumber || 1) + i,
-                              A: null,
-                              B: null,
-                              C: null,
-                              D: null,
-                              E: null,
-                              remark: "",
-                            })),
-                            permissions: {
-                              canView: true,
-                              canModifyMeasurements: true,
-                              canModifySerialNumbers: false,
-                              canModifyRemarks: true,
-                              canAddRows: true,
-                              canDeleteRows: false,
-                            },
+                            rows:
+                              manageSheet?.sheetCategory === "cutting"
+                                ? []
+                                : EMPTY_ROWS.map((r, i) => ({
+                                    rowNumber: i + 1,
+                                    serialNumber: (manageSheet.startingSerialNumber || 1) + i,
+                                    A: null,
+                                    B: null,
+                                    C: null,
+                                    D: null,
+                                    E: null,
+                                    remark: "",
+                                  })),
+                            permissions: { ...DEFAULT_WORKER_PERMISSIONS },
                           },
                         ]);
                       }
@@ -1373,63 +1494,76 @@ function MeasurementDashboardContent() {
 
               {/* Members List */}
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {managePeople.map((person, idx) => {
-                  const canModify = Boolean(person.permissions?.canModifyMeasurements);
+                {managePeople.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4 border border-dashed border-slate-200 rounded-xl">
+                    {manageSheet?.sheetCategory === "cutting"
+                      ? "No people invited yet. Add someone above."
+                      : "No members yet."}
+                  </p>
+                ) : (
+                  managePeople.map((person, idx) => {
+                    const canModify = Boolean(person.permissions?.canModifyMeasurements);
 
-                  return (
-                    <div key={idx} className="p-3 rounded-xl bg-white border border-sheet-border/80 shadow-sm flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
-                            {person.name[0]?.toUpperCase()}
+                    return (
+                      <div key={person.userId || idx} className="p-3 rounded-xl bg-white border border-sheet-border/80 shadow-sm flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                              {person.name[0]?.toUpperCase()}
+                            </div>
+                            <span className="text-xs font-bold text-slate-800 truncate">{person.name}</span>
+                            {person.status && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${statusColor(person.status)}`}>
+                                {statusLabel(person.status)}
+                              </span>
+                            )}
                           </div>
-                          <span className="text-xs font-bold text-slate-800 truncate">{person.name}</span>
+
+                          {/* Permission selector: Can Modify vs Cannot Modify / View Only */}
+                          <div className="flex items-center gap-2 text-xs">
+                            <label className="text-[11px] font-medium text-slate-500">Permission:</label>
+                            <select
+                              value={canModify ? "can_modify" : "view_only"}
+                              onChange={(e) => {
+                                const isCanModify = e.target.value === "can_modify";
+                                const updated = [...managePeople];
+                                updated[idx] = {
+                                  ...updated[idx],
+                                  permissions: {
+                                    canView: true,
+                                    canModifyMeasurements: isCanModify,
+                                    canModifySerialNumbers: false,
+                                    canModifyRemarks: isCanModify,
+                                    canAddRows: isCanModify,
+                                    canDeleteRows: isCanModify,
+                                  },
+                                };
+                                setManagePeople(updated);
+                              }}
+                              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
+                            >
+                              <option value="can_modify">Can Modify</option>
+                              <option value="view_only">Cannot Modify / View Only</option>
+                            </select>
+                          </div>
                         </div>
 
-                        {/* Permission selector: Can Modify vs Cannot Modify / View Only */}
-                        <div className="flex items-center gap-2 text-xs">
-                          <label className="text-[11px] font-medium text-slate-500">Permission:</label>
-                          <select
-                            value={canModify ? "can_modify" : "view_only"}
-                            onChange={(e) => {
-                              const isCanModify = e.target.value === "can_modify";
-                              const updated = [...managePeople];
-                              updated[idx] = {
-                                ...updated[idx],
-                                permissions: {
-                                  canView: true,
-                                  canModifyMeasurements: isCanModify,
-                                  canModifySerialNumbers: false,
-                                  canModifyRemarks: isCanModify,
-                                  canAddRows: isCanModify,
-                                  canDeleteRows: isCanModify,
-                                },
-                              };
-                              setManagePeople(updated);
+                        {(manageSheet?.sheetCategory === "cutting" || managePeople.length > 1) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManagePeople(managePeople.filter((_, i) => i !== idx));
                             }}
-                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
+                            className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
+                            title="Remove Member"
                           >
-                            <option value="can_modify">Can Modify</option>
-                            <option value="view_only">Cannot Modify / View Only</option>
-                          </select>
-                        </div>
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
-
-                      {managePeople.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setManagePeople(managePeople.filter((_, i) => i !== idx));
-                          }}
-                          className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
-                          title="Remove Member"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
 

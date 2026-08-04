@@ -173,8 +173,8 @@ export function MeasurementToolbar({
             {permBadgeLabel}
           </span>
 
-          {/* Manage Permissions Button (Owner Only) */}
-          {isOwner && sheet.people.length > 0 && (
+          {/* Manage Permissions Button (Owner Only) — not for cutting machines */}
+          {isOwner && sheet.sheetCategory !== "cutting" && sheet.people.length > 0 && (
             <button
               onClick={() => setShowPermissionsModal(true)}
               className="p-1.5 rounded-lg border border-sheet-border hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1"
@@ -244,12 +244,14 @@ export function MeasurementToolbar({
         </div>
       </div>
 
-      {/* People tabs row */}
-      {sheet.people.length > 1 && (
+      {/* People / Machine tabs row — cutting always shows machine tabs (even if only 1) */}
+      {(sheet.sheetCategory === "cutting" ? sheet.people.length >= 1 : sheet.people.length > 1) && (
         <div className="flex items-center gap-1 border-t border-sheet-border px-2 sm:px-4 py-1.5 overflow-x-auto">
           <span className="text-[10px] sm:text-xs font-semibold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
             <User size={11} />
-            <span className="hidden sm:inline">Measuring:</span>
+            <span className="hidden sm:inline">
+              {sheet.sheetCategory === "cutting" ? "Machines:" : "Measuring:"}
+            </span>
           </span>
           {sheet.people.map((person, idx) => (
             <button
@@ -261,7 +263,7 @@ export function MeasurementToolbar({
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {person.name || `Person ${idx + 1}`}
+              {person.name || (sheet.sheetCategory === "cutting" ? `Machine ${idx + 1}` : `Person ${idx + 1}`)}
             </button>
           ))}
         </div>
