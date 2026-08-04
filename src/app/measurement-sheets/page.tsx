@@ -250,7 +250,7 @@ function MeasurementDashboardContent() {
     setSingleName("");
     setNumPeople(2);
     setSelectedPeople([{ userId: "", name: "" }, { userId: "", name: "" }]);
-    setFormNumSlabs("1");
+    setFormNumSlabs("");
     setFormNumMachines(3);
   };
 
@@ -260,8 +260,8 @@ function MeasurementDashboardContent() {
 
     const category: SheetCategory = activeSheetCategory || (formPersonType === "customer" ? "customer" : "polish");
     const np = typeof numPeople === "number" ? numPeople : 1;
-    const sno = 1; // Default starting serial number is always 1 (Requirement 4)
     const slabsValue = formNumSlabs === "" ? 1 : Math.max(1, parseInt(formNumSlabs, 10) || 1);
+    const sno = category === "customer" ? slabsValue : 1;
     const machinesValue =
       category === "cutting"
         ? (typeof formNumMachines === "number" && Number.isInteger(formNumMachines) && formNumMachines >= 1 ? formNumMachines : null)
@@ -1113,9 +1113,28 @@ function MeasurementDashboardContent() {
               </div>
             )}
 
-            {/* Customer Specific Fields (Measurement Type & Sheet Type) */}
+            {/* Customer Specific Fields (Starting Slab Number, Measurement Type & Sheet Type) */}
             {!isWorkerSection && (
               <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">
+                    Starting Slab Number <span className="text-slate-400 font-normal">(optional, default: 1)</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="e.g. 1, 50, 100…"
+                    value={formNumSlabs}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setFormNumSlabs(raw);
+                      }
+                    }}
+                    className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">
                     Measurement Type <span className="text-red-500">*</span>
