@@ -1,19 +1,28 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import type { LocationType, PersonType, MeasurementRow, WorkerPermissions } from "@/types";
+import type {
+  LocationType,
+  PersonType,
+  MeasurementRow,
+  WorkerPermissions,
+  SheetCategory,
+} from "@/types";
 import { MeasurementCell } from "./MeasurementCell";
 import {
   calculateRowResult,
   calculatePersonTotal,
   calculateNationalCmResult,
   calculatePersonCmTotal,
+  calculateCuttingRowResult,
+  calculateCuttingPersonTotal,
 } from "@/lib/measurementExport";
 import { Plus, Trash2, MessageSquare, X, Check, AlertCircle } from "lucide-react";
 
 interface MeasurementGridProps {
   locationType: LocationType;
   personType?: PersonType;
+  sheetCategory?: SheetCategory;
   startingSerialNumber?: number;
   rows: MeasurementRow[];
   onChangeRows: (rows: MeasurementRow[]) => void;
@@ -26,6 +35,7 @@ interface MeasurementGridProps {
 export function MeasurementGrid({
   locationType,
   personType = "worker",
+  sheetCategory,
   startingSerialNumber = 1,
   rows,
   onChangeRows,
@@ -42,6 +52,7 @@ export function MeasurementGrid({
   );
 
   const isCustomerSheet = personType === "customer";
+  const isCuttingSheet = sheetCategory === "cutting";
 
   // Remark Modal state
   const [editingRemarkRowIdx, setEditingRemarkRowIdx] = useState<number | null>(null);
@@ -49,8 +60,17 @@ export function MeasurementGrid({
   const [errorMessage, setErrorMessage] = useState("");
 
   const isLocal = locationType === "local";
-  const showNationalCmCalc = !isLocal && isCustomerSheet;
-  const columns = isLocal
+  const showNationalCmCalc = !isLocal && isCustomerSheet && !isCuttingSheet;
+  // Cutting sheets: Length, Height, No. of Slabs → ((L*H)/144)*slabs
+  const columns = isCuttingSheet
+    ? [
+        { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
+        { key: "A", label: "Length", isCalc: false },
+        { key: "B", label: "Height", isCalc: false },
+        { key: "C", label: "No. of Slabs", isCalc: false },
+        { key: "E", label: "Calculated", isCalc: true },
+      ]
+    : isLocal
     ? [
         { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
         { key: "A", label: "Length", isCalc: false },
@@ -70,7 +90,6 @@ export function MeasurementGrid({
           : []),
         ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ];
-
   // Effective permissions
   const canEditSerial = isOwner || (permissions?.canModifySerialNumbers && !isReadonlyDay);
   const canEditMeasurements = isOwner || (permissions?.canModifyMeasurements && !isReadonlyDay);
@@ -186,22 +205,52 @@ export function MeasurementGrid({
       if (isEnterKey) {
         e.preventDefault();
         shouldAutoEdit = true;
-        if (colKey === "A") {
-          targetColKey = isLocal ? "B" : "C";
-        } else if ((isLocal && colKey === "B") || (!isLocal && colKey === "C")) {
-          targetRow = rowIdx + 1;
+        if (colKey === "SNO") {
           targetColKey = "A";
-        } else if (colKey === "SNO") {
-          targetColKey = "A";
+        } else if (isCuttingSheet) {
+          // Cutting: Length → Height → No. of Slabs → next row Length
+          if (colKey === "A") {
+            targetColKey = "B";
+          } else if (colKey === "B") {
+            targetColKey = "C";
+          } else {
+            targetRow = rowIdx + 1;
+            targetColKey = "A";
+          }
+        } else if (isLocal) {
+          // Local: Length → Height → next row Length
+          if (colKey === "A") {
+            targetColKey = "B";
+          } else {
+            targetRow = rowIdx + 1;
+            targetColKey = "A";
+          }
         } else {
-          targetRow = rowIdx + 1;
-          targetColKey = "A";
+          // National: Length → Length (CM) → Height → Height (CM) → next row Length
+          if (colKey === "A") {
+            targetColKey = "B";
+          } else if (colKey === "B") {
+            targetColKey = "C";
+          } else if (colKey === "C") {
+            targetColKey = "D";
+          } else {
+            targetRow = rowIdx + 1;
+            targetColKey = "A";
+          }
         }
       } else if (e.key === "Tab") {
         e.preventDefault();
         shouldAutoEdit = !e.shiftKey;
         if (!e.shiftKey) {
-          if (isLocal) {
+          if (isCuttingSheet) {
+            if (colKey === "SNO") targetColKey = "A";
+            else if (colKey === "A") targetColKey = "B";
+            else if (colKey === "B") targetColKey = "C";
+            else {
+              targetColKey = "A";
+              targetRow = rowIdx + 1;
+            }
+          } else if (isLocal) {
             if (colKey === "SNO") targetColKey = "A";
             else if (colKey === "A") targetColKey = "B";
             else {
@@ -236,10 +285,12 @@ export function MeasurementGrid({
         setPendingEdit({ rowIdx: targetRow, colKey: targetColKey });
       }
     },
-    [isLocal, rows.length, addRow, canAddRows]
+    [isLocal, isCuttingSheet, rows.length, addRow, canAddRows]
   );
 
-  const totalVal = calculatePersonTotal(locationType, rows);
+  const totalVal = isCuttingSheet
+    ? calculateCuttingPersonTotal(rows)
+    : calculatePersonTotal(locationType, rows);
   const cmTotalVal = showNationalCmCalc ? calculatePersonCmTotal(rows) : 0;
   const firstCalcIdx = columns.findIndex((c) => c.isCalc);
   const footerLabelColSpan = firstCalcIdx > 0 ? firstCalcIdx : Math.max(1, columns.length - 1);
@@ -276,7 +327,9 @@ export function MeasurementGrid({
           </thead>
           <tbody>
             {rows.map((row, rIdx) => {
-              const rowResult = calculateRowResult(locationType, row.A, row.B, row.C);
+              const rowResult = isCuttingSheet
+                ? calculateCuttingRowResult(row.A, row.B, row.C)
+                : calculateRowResult(locationType, row.A, row.B, row.C);
               const rowCmResult = showNationalCmCalc
                 ? calculateNationalCmResult(row.B, row.D)
                 : 0;

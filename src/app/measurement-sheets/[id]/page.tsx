@@ -260,6 +260,7 @@ export default function MeasurementSheetEditorPage() {
             key={`${sheet.id}_${activePersonIdx}`}
             locationType={sheet.locationType}
             personType={sheet.personType}
+            sheetCategory={sheet.sheetCategory}
             startingSerialNumber={sheet.startingSerialNumber ?? 1}
             rows={currentPerson.rows}
             onChangeRows={handleRowsChange}

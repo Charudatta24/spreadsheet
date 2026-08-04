@@ -206,8 +206,8 @@ export type MeasurementRow = {
   rowNumber: number;
   serialNumber: number;
   A: number | null; // Length
-  B: number | null; // Height (Local) or Length in CM (National)
-  C: number | null; // Calculated Value (Local) or Height (National)
+  B: number | null; // Height (Local/Cutting) or Length in CM (National)
+  C: number | null; // Calculated (Local) | Height (National) | No. of Slabs (Cutting)
   D?: number | null; // Height in CM (National)
   E?: number | null; // Calculated Value (National) — (A * C) / 144
   /** Customer National only — computed: (B * D) / 929 */

@@ -23,6 +23,44 @@ export function calculateRowResult(
 }
 
 /**
+ * Cutting sheets only: ((Length * Height) / 144) * Number of Slabs
+ * A = Length, B = Height, C = Number of Slabs
+ */
+export function calculateCuttingRowResult(
+  A: number | null,
+  B: number | null,
+  numSlabs: number | null
+): number {
+  if (
+    A == null ||
+    B == null ||
+    numSlabs == null ||
+    isNaN(A) ||
+    isNaN(B) ||
+    isNaN(numSlabs) ||
+    A === 0 ||
+    B === 0 ||
+    numSlabs === 0
+  ) {
+    return 0;
+  }
+  return ((A * B) / 144) * numSlabs;
+}
+
+/**
+ * Sum of cutting calculated values for a person's rows.
+ */
+export function calculateCuttingPersonTotal(
+  rows: MeasurementSheet["people"][0]["rows"]
+): number {
+  let sum = 0;
+  for (const r of rows) {
+    sum += calculateCuttingRowResult(r.A, r.B, r.C);
+  }
+  return sum;
+}
+
+/**
  * Customer National only: Calculated (CM) = (Length CM * Height CM) / 929
  */
 export function calculateNationalCmResult(
@@ -76,7 +114,11 @@ export function calculatePersonTotal(
 export function calculateSheetTotal(sheet: MeasurementSheet): number {
   let total = 0;
   for (const person of sheet.people) {
-    total += calculatePersonTotal(sheet.locationType, person.rows);
+    if (sheet.sheetCategory === "cutting") {
+      total += calculateCuttingPersonTotal(person.rows);
+    } else {
+      total += calculatePersonTotal(sheet.locationType, person.rows);
+    }
   }
   return total;
 }
@@ -91,7 +133,21 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
     const sheetData: (string | number)[][] = [];
 
     // Table Headers & Rows — clean column names, S.No., Remark, no metadata
-    if (sheet.locationType === "local") {
+    if (sheet.sheetCategory === "cutting") {
+      sheetData.push(["S.No.", "Length", "Height", "No. of Slabs", "Calculated"]);
+      person.rows.forEach((r, i) => {
+        const calcVal = calculateCuttingRowResult(r.A, r.B, r.C);
+        sheetData.push([
+          r.serialNumber ?? (i + 1),
+          r.A ?? "",
+          r.B ?? "",
+          r.C ?? "",
+          calcVal > 0 ? calcVal : "",
+        ]);
+      });
+      const pTotal = calculateCuttingPersonTotal(person.rows);
+      sheetData.push(["", "", "", "Total:", pTotal]);
+    } else if (sheet.locationType === "local") {
       sheetData.push(["S.No.", "Length", "Height", "Calculated", "Remark"]);
       person.rows.forEach((r, i) => {
         const calcVal = calculateRowResult("local", r.A, r.B, r.C);
@@ -158,7 +214,9 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
 
     // Set column widths
     const colWidths =
-      sheet.locationType === "local"
+      sheet.sheetCategory === "cutting"
+        ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }]
+        : sheet.locationType === "local"
         ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 24 }]
         : sheet.personType === "customer"
         ? [
@@ -203,7 +261,14 @@ export function exportMeasurementToCSV(sheet: MeasurementSheet, personIndex = 0)
   rows.push(`Person Name:,${person.name}`);
   rows.push(``);
 
-  if (sheet.locationType === "local") {
+  if (sheet.sheetCategory === "cutting") {
+    rows.push(`No.,A - Length,B - Height,C - No. of Slabs,Calculated`);
+    person.rows.forEach((r, i) => {
+      const calc = calculateCuttingRowResult(r.A, r.B, r.C);
+      rows.push(`${i + 1},${r.A ?? ""},${r.B ?? ""},${r.C ?? ""},${calc > 0 ? calc : ""}`);
+    });
+    rows.push(`,,,,TOTAL: ${calculateCuttingPersonTotal(person.rows)}`);
+  } else if (sheet.locationType === "local") {
     rows.push(`No.,A - Length,B - Height,C - Calculated`);
     person.rows.forEach((r, i) => {
       const calc = calculateRowResult("local", r.A, r.B, r.C);
