@@ -185,6 +185,14 @@ export default function MeasurementSheetEditorPage() {
 
   const currentPerson = sheet.people[activePersonIdx] || sheet.people[0];
 
+  const sheetListType =
+    sheet.sheetCategory ||
+    (sheet.personType === "customer" ? "customer" : "polish");
+  const backHref =
+    user?.accountType === "non-owner"
+      ? "/hub"
+      : `/measurement-sheets?type=${sheetListType}`;
+
   return (
     <div className="min-h-screen h-screen flex flex-col bg-sheet-bg text-sheet-text overflow-hidden">
       {/* Top Toolbar */}
@@ -196,6 +204,7 @@ export default function MeasurementSheetEditorPage() {
         isOwner={isOwner}
         isReadonlyDay={isReadonlyDay}
         currentUserPermissions={myPermissions}
+        backHref={backHref}
         onSelectPerson={(idx) => setActivePersonIdx(idx)}
         onRename={handleRename}
         onUpdatePermissions={handleUpdatePermissions}

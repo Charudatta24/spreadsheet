@@ -30,6 +30,8 @@ interface MeasurementToolbarProps {
   isOwner: boolean;
   isReadonlyDay: boolean;
   currentUserPermissions?: WorkerPermissions;
+  /** Where the back arrow navigates (defaults to measurement sheets list) */
+  backHref?: string;
   onSelectPerson: (idx: number) => void;
   onRename: (title: string) => void;
   onUpdatePermissions?: (personIdx: number, newPerms: WorkerPermissions) => void;
@@ -47,6 +49,7 @@ export function MeasurementToolbar({
   isOwner,
   isReadonlyDay,
   currentUserPermissions,
+  backHref = "/measurement-sheets",
   onSelectPerson,
   onRename,
   onUpdatePermissions,
@@ -104,7 +107,7 @@ export function MeasurementToolbar({
         {/* Left: back + title */}
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
           <Link
-            href="/measurement-sheets"
+            href={backHref}
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors shrink-0"
             title="Back"
           >
@@ -173,8 +176,10 @@ export function MeasurementToolbar({
             {permBadgeLabel}
           </span>
 
-          {/* Manage Permissions Button (Owner Only) — not for cutting machines */}
-          {isOwner && sheet.sheetCategory !== "cutting" && sheet.people.length > 0 && (
+          {/* Manage Permissions Button (Owner Only) — only when invited people exist */}
+          {isOwner &&
+            sheet.sheetCategory !== "cutting" &&
+            sheet.people.some((p) => Boolean(p.userId)) && (
             <button
               onClick={() => setShowPermissionsModal(true)}
               className="p-1.5 rounded-lg border border-sheet-border hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1"

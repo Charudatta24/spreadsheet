@@ -540,9 +540,27 @@ function MeasurementDashboardContent() {
           updatedAt: serverTimestamp(),
         });
       } else {
+        // Private sheets keep the local name/rows entry (no userId); invited people are appended.
+        const localEntries = (manageSheet.people || []).filter((p) => !p.userId);
+        const invitedEntries = managePeople.filter((p) => Boolean(p.userId));
+        const people =
+          manageSheet.sheetType === "private"
+            ? [
+                ...(localEntries.length > 0
+                  ? localEntries
+                  : [
+                      {
+                        name: manageTitle.trim() || manageSheet.title,
+                        rows: manageSheet.people?.[0]?.rows || [],
+                      },
+                    ]),
+                ...invitedEntries,
+              ]
+            : managePeople;
+
         await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
           title: manageTitle.trim() || manageSheet.title,
-          people: managePeople,
+          people,
           participantIds,
           updatedAt: serverTimestamp(),
         });
@@ -666,18 +684,14 @@ function MeasurementDashboardContent() {
   // Separate: own vs pending vs accepted
   const mySheets = currentCategorySheets.filter((s) => s.userId === user?.uid);
 
-  // Worker invitations — only show accept/decline on the sheet's working day
-  // (do not show the pending popup for future-dated sheets)
+  // Invitations — accept/decline notification only on the sheet's working day
+  // (hidden for future-dated shares until that day arrives)
   const pendingSheets = currentCategorySheets.filter((s) => {
     if (s.userId === user?.uid) return false;
     const status = getWorkerStatus(s);
     if (status !== "pending") return false;
-    // For worker sheets, invitations appear only on the working day
-    if (s.personType === "worker") {
-      const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
-      return sheetDateISO === todayISO;
-    }
-    return true;
+    const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
+    return sheetDateISO === todayISO;
   });
 
   const acceptedSharedSheets = currentCategorySheets.filter((s) => {
@@ -859,9 +873,11 @@ function MeasurementDashboardContent() {
       <header className="sticky top-0 z-30 h-14 sm:h-16 border-b border-sheet-border bg-sheet-bg/90 backdrop-blur-md flex items-center px-3 sm:px-6 justify-between gap-2">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push("/measurement-sheets")}
+            onClick={() =>
+              router.push(user.accountType === "non-owner" ? "/hub" : "/measurement-sheets")
+            }
             className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
-            title="Back to Selection"
+            title={user.accountType === "non-owner" ? "Back to Home" : "Back to Selection"}
           >
             <ArrowLeft size={18} />
           </button>
@@ -1127,9 +1143,12 @@ function MeasurementDashboardContent() {
                           e.stopPropagation();
                           setManageSheet(s);
                           setManageTitle(s.title);
+                          // Private sheet "name" is not an invited person — only show real invitees here
                           setManagePeople(
                             s.sheetCategory === "cutting"
                               ? getCuttingInvitees(s)
+                              : s.sheetType === "private"
+                              ? s.people.filter((p) => Boolean(p.userId))
                               : [...s.people]
                           );
                         }}
@@ -1282,11 +1301,11 @@ function MeasurementDashboardContent() {
             {effectiveSheetType === "private" && (
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">
-                  Name <span className="text-red-500">*</span>
+                  Sheet Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter name…"
+                  placeholder="Enter sheet name…"
                   value={singleName}
                   onChange={(e) => setSingleName(e.target.value)}
                   className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40"
@@ -1317,7 +1336,7 @@ function MeasurementDashboardContent() {
                   />
                 </div>
 
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[min(28rem,55vh)] overflow-y-auto pr-1">
                   {selectedPeople.slice(0, typeof numPeople === "number" ? numPeople : 0).map((person, i) => (
                     <div key={i}>
                       <label className="block text-[11px] font-medium text-slate-500 mb-0.5">
@@ -1399,8 +1418,8 @@ function MeasurementDashboardContent() {
       {/* ── MANAGE SHEET & MEMBERS MODAL (Requirement 2) ────────────────── */}
       {manageSheet && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-sheet-border pb-3">
+          <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-sheet-border pb-3 shrink-0">
               <h2 className="text-base font-bold text-sheet-text flex items-center gap-2">
                 <Edit2 size={18} className="text-emerald-600" />
                 Manage Sheet & Permissions
@@ -1410,15 +1429,23 @@ function MeasurementDashboardContent() {
               </button>
             </div>
 
+            <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-0.5">
             {/* Sheet Title */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Sheet Title</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                {manageSheet.sheetType === "private" ? "Sheet Name" : "Sheet Title"}
+              </label>
               <input
                 type="text"
                 value={manageTitle}
                 onChange={(e) => setManageTitle(e.target.value)}
                 className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/40"
               />
+              {manageSheet.sheetType === "private" && (
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  This is the sheet name only. Can Modify / View Only appears after you add people below.
+                </p>
+              )}
             </div>
 
             {/* Members & Permissions */}
@@ -1426,6 +1453,8 @@ function MeasurementDashboardContent() {
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-600">
                   {manageSheet?.sheetCategory === "cutting"
+                    ? `People (${managePeople.length})`
+                    : manageSheet?.sheetType === "private"
                     ? `People (${managePeople.length})`
                     : `Members / Polishes (${managePeople.length})`}
                 </label>
@@ -1444,7 +1473,7 @@ function MeasurementDashboardContent() {
               )}
 
               {/* Add Member Dropdown */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 overflow-visible">
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   {manageSheet?.sheetCategory === "cutting" ? "+ Add Person" : "+ Add Member / Polish"}
                 </label>
@@ -1491,11 +1520,18 @@ function MeasurementDashboardContent() {
                   <p className="text-xs text-slate-400 text-center py-4 border border-dashed border-slate-200 rounded-xl">
                     {manageSheet?.sheetCategory === "cutting"
                       ? "No people invited yet. Add someone above."
+                      : manageSheet?.sheetType === "private"
+                      ? "No people added yet. Add someone above to set Can Modify / View Only."
                       : "No members yet."}
                   </p>
                 ) : (
                   managePeople.map((person, idx) => {
                     const canModify = Boolean(person.permissions?.canModifyMeasurements);
+                    const isInvitedPerson = Boolean(person.userId);
+                    const canRemove =
+                      manageSheet?.sheetCategory === "cutting" ||
+                      manageSheet?.sheetType === "private" ||
+                      managePeople.length > 1;
 
                     return (
                       <div key={person.userId || idx} className="p-3 rounded-xl bg-white border border-sheet-border/80 shadow-sm flex items-center justify-between gap-3">
@@ -1512,36 +1548,38 @@ function MeasurementDashboardContent() {
                             )}
                           </div>
 
-                          {/* Permission selector: Can Modify vs Cannot Modify / View Only */}
-                          <div className="flex items-center gap-2 text-xs">
-                            <label className="text-[11px] font-medium text-slate-500">Permission:</label>
-                            <select
-                              value={canModify ? "can_modify" : "view_only"}
-                              onChange={(e) => {
-                                const isCanModify = e.target.value === "can_modify";
-                                const updated = [...managePeople];
-                                updated[idx] = {
-                                  ...updated[idx],
-                                  permissions: {
-                                    canView: true,
-                                    canModifyMeasurements: isCanModify,
-                                    canModifySerialNumbers: false,
-                                    canModifyRemarks: isCanModify,
-                                    canAddRows: isCanModify,
-                                    canDeleteRows: isCanModify,
-                                  },
-                                };
-                                setManagePeople(updated);
-                              }}
-                              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
-                            >
-                              <option value="can_modify">Can Modify</option>
-                              <option value="view_only">Cannot Modify / View Only</option>
-                            </select>
-                          </div>
+                          {/* Permission selector only for invited people */}
+                          {isInvitedPerson && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <label className="text-[11px] font-medium text-slate-500">Permission:</label>
+                              <select
+                                value={canModify ? "can_modify" : "view_only"}
+                                onChange={(e) => {
+                                  const isCanModify = e.target.value === "can_modify";
+                                  const updated = [...managePeople];
+                                  updated[idx] = {
+                                    ...updated[idx],
+                                    permissions: {
+                                      canView: true,
+                                      canModifyMeasurements: isCanModify,
+                                      canModifySerialNumbers: false,
+                                      canModifyRemarks: isCanModify,
+                                      canAddRows: isCanModify,
+                                      canDeleteRows: isCanModify,
+                                    },
+                                  };
+                                  setManagePeople(updated);
+                                }}
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
+                              >
+                                <option value="can_modify">Can Modify</option>
+                                <option value="view_only">Cannot Modify / View Only</option>
+                              </select>
+                            </div>
+                          )}
                         </div>
 
-                        {(manageSheet?.sheetCategory === "cutting" || managePeople.length > 1) && (
+                        {canRemove && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1559,9 +1597,10 @@ function MeasurementDashboardContent() {
                 )}
               </div>
             </div>
+            </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-sheet-border pt-4">
+            <div className="flex items-center justify-end gap-3 border-t border-sheet-border pt-4 shrink-0">
               <button
                 type="button"
                 onClick={() => setManageSheet(null)}
