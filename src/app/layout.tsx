@@ -5,8 +5,8 @@ import { NamePromptModal } from "@/components/auth/NamePromptModal";
 import { AccountTypePromptModal } from "@/components/auth/AccountTypePromptModal";
 
 export const metadata: Metadata = {
-  title: "CollabSheet",
-  description: "Real-time collaborative spreadsheets",
+  title: "MeasureSheets",
+  description: "Real-time collaborative measurement sheets",
 };
 
 export default function RootLayout({

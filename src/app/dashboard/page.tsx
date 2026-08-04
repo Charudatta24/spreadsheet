@@ -311,7 +311,7 @@ export default function DashboardPage() {
           {/* Center: Logo & Brand (Absolutely centered) */}
           <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-3 pointer-events-none md:pointer-events-auto">
             <div className="flex flex-col leading-tight">
-              <span className="font-bold text-sm tracking-tight text-sheet-text">CollabSheet</span>
+              <span className="font-bold text-sm tracking-tight text-sheet-text">MeasureSheets</span>
               {user && (
                 <div className="flex items-center gap-1.5 h-4">
                    {!user.isAnonymous ? <EditableNickname /> : <span className="text-[10px] text-sheet-muted font-medium uppercase tracking-wider">{user.displayName}</span>}

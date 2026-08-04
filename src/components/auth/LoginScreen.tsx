@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  signInWithPopup,
-  GoogleAuthProvider,
-  signInAnonymously,
-  updateProfile,
-} from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { colorForUid } from "@/lib/sync/authStore";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -18,7 +13,6 @@ import type { AppUser } from "@/types";
 const provider = new GoogleAuthProvider();
 
 export function LoginScreen() {
-  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   // Stores the partially-built user while waiting for nickname input
@@ -77,35 +71,6 @@ export function LoginScreen() {
     setPendingUser(null);
   }
 
-  async function handleAnonymous() {
-    if (!displayName.trim()) {
-      setError("Please enter a display name.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const result = await signInAnonymously(auth);
-      await updateProfile(result.user, { displayName: displayName.trim() });
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("fluxwork-displayname", displayName.trim());
-      }
-      const user: AppUser = {
-        uid: result.user.uid,
-        displayName: displayName.trim(),
-        email: null,
-        photoURL: null,
-        color: colorForUid(result.user.uid),
-        isAnonymous: true,
-      };
-      setUser(user);
-    } catch {
-      setError("Failed to sign in. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <>
       {/* Nickname prompt shown after Google sign-in for first-time users */}
@@ -120,12 +85,9 @@ export function LoginScreen() {
           {/* Logo */}
             <div className="inline-flex items-center gap-3 mb-3">
               <span className="text-2xl font-black text-sheet-text tracking-tight">
-                CollabSheet
+                MeasureSheets
               </span>
             </div>
-            <p className="text-sheet-muted text-sm">
-              Real-time collaboration for the modern team
-            </p>
 
           <div className="bg-sheet-surface rounded-xl border border-sheet-border p-6 space-y-4">
             {/* Google */}
@@ -135,41 +97,8 @@ export function LoginScreen() {
               className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-white text-gray-800 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               <GoogleIcon />
-              Continue with Google
+              {loading ? "Signing in…" : "Continue with Google"}
             </button>
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-sheet-border" />
-              <span className="text-xs text-sheet-muted">or</span>
-              <div className="flex-1 h-px bg-sheet-border" />
-            </div>
-
-            {/* Anonymous */}
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAnonymous()}
-                placeholder="Display name"
-                maxLength={32}
-                className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-sheet-accent transition-colors"
-              />
-              <button
-                onClick={handleAnonymous}
-                disabled={loading}
-                className="w-full px-4 py-2.5 rounded-lg bg-sheet-accent text-white font-medium text-sm hover:bg-sheet-accent-dim transition-colors disabled:opacity-50 relative overflow-hidden"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                    <span>Signing in…</span>
-                  </div>
-                ) : (
-                  "Join as Guest"
-                )}
-              </button>
-            </div>
 
             {error && (
               <p className="text-red-400 text-xs text-center">{error}</p>
