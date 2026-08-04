@@ -666,15 +666,16 @@ function MeasurementDashboardContent() {
   // Separate: own vs pending vs accepted
   const mySheets = currentCategorySheets.filter((s) => s.userId === user?.uid);
 
-  // Worker invitations
+  // Worker invitations — only show accept/decline on the sheet's working day
+  // (do not show the pending popup for future-dated sheets)
   const pendingSheets = currentCategorySheets.filter((s) => {
     if (s.userId === user?.uid) return false;
     const status = getWorkerStatus(s);
     if (status !== "pending") return false;
-    // For worker sheets, past invitations are expired
+    // For worker sheets, invitations appear only on the working day
     if (s.personType === "worker") {
       const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
-      return sheetDateISO >= todayISO;
+      return sheetDateISO === todayISO;
     }
     return true;
   });
@@ -924,9 +925,6 @@ function MeasurementDashboardContent() {
             </h2>
             <div className="space-y-3">
               {pendingSheets.map((s) => {
-                const sheetDateISO = (s as any).dateISO || parseSheetDateISO(s.date);
-                const isFuture = sheetDateISO > todayISO;
-
                 return (
                   <div
                     key={s.id}
@@ -949,17 +947,12 @@ function MeasurementDashboardContent() {
                       </button>
 
                       <button
-                        disabled={isFuture}
-                        onClick={() => !isFuture && handleAcceptRequest(s)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-colors ${
-                          isFuture
-                            ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300"
-                            : "bg-emerald-600 text-white hover:bg-emerald-700"
-                        }`}
-                        title={isFuture ? `Acceptance available on ${s.date}` : "Accept request"}
+                        onClick={() => handleAcceptRequest(s)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
+                        title="Accept request"
                       >
                         <CheckCircle size={14} />
-                        {isFuture ? `Available on ${s.date}` : "Accept"}
+                        Accept
                       </button>
                     </div>
                   </div>
