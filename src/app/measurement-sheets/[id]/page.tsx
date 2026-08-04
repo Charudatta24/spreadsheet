@@ -74,6 +74,16 @@ export default function MeasurementSheetEditorPage() {
   // Security guard: redirect if not authorized
   useEffect(() => {
     if (!loading && sheet && user) {
+      if (sheet.deleted) {
+        if (sheet.userId === user.uid) {
+          router.replace("/hub/account?tab=trash");
+        } else {
+          const fallbackType = user.workType ? `/measurement-sheets?type=${user.workType}` : "/measurement-sheets";
+          router.replace(fallbackType);
+        }
+        return;
+      }
+
       const isSheetOwner = sheet.userId === user.uid;
       const myEntry =
         sheet.people?.find((p) => p.userId === user.uid) ||
@@ -128,6 +138,10 @@ export default function MeasurementSheetEditorPage() {
 
   if (loading || !sheet) {
     return <LoadingGrid fullPage size="lg" label="Loading Measurement Sheet..." />;
+  }
+
+  if (sheet.deleted) {
+    return <LoadingGrid fullPage size="lg" label="Opening Deleted Sheets..." />;
   }
 
   const currentPerson = sheet.people[activePersonIdx] || sheet.people[0];

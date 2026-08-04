@@ -91,6 +91,7 @@ function MeasurementDashboardContent() {
       : null;
 
   const { user } = useAuthStore();
+  const userWorkType = user?.workType;
 
   const [sheets, setSheets] = useState<MeasurementSheet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -668,9 +669,19 @@ function MeasurementDashboardContent() {
   const emptyStateLabel = activeSheetCategory === "polish" ? "polish" : activeSheetCategory === "cutting" ? "cutting" : "customer";
 
   // ── 1. SELECTION SCREEN (If type is null/not specified) ─────────────────────
-  // Auto-redirect non-owners who have a workType selected
-  if (!activeTypeParam && user.accountType === "non-owner" && (user as any).workType) {
-    router.replace(`/measurement-sheets?type=${(user as any).workType}`);
+  // Non-owners are locked to their assigned work type even if they change the URL.
+  if (!activeTypeParam && user.accountType === "non-owner" && userWorkType) {
+    router.replace(`/measurement-sheets?type=${userWorkType}`);
+    return null;
+  }
+
+  if (
+    activeTypeParam &&
+    user.accountType === "non-owner" &&
+    userWorkType &&
+    activeTypeParam !== userWorkType
+  ) {
+    router.replace(`/measurement-sheets?type=${userWorkType}`);
     return null;
   }
 
@@ -780,13 +791,14 @@ function MeasurementDashboardContent() {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Switch Category Button */}
-          <button
-            onClick={() => router.push(`/measurement-sheets?type=${switchTarget}`)}
-            className="px-3 py-1.5 rounded-xl border border-sheet-border bg-white text-xs font-semibold text-sheet-text hover:bg-sheet-bg transition-colors"
-          >
-            Switch to {switchTarget === "customer" ? "Customer" : switchTarget === "polish" ? "Polish" : "Cutting"}
-          </button>
+          {user.accountType !== "non-owner" && (
+            <button
+              onClick={() => router.push(`/measurement-sheets?type=${switchTarget}`)}
+              className="px-3 py-1.5 rounded-xl border border-sheet-border bg-white text-xs font-semibold text-sheet-text hover:bg-sheet-bg transition-colors"
+            >
+              Switch to {switchTarget === "customer" ? "Customer" : switchTarget === "polish" ? "Polish" : "Cutting"}
+            </button>
+          )}
 
           <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium">
             <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
@@ -1454,7 +1466,7 @@ function MeasurementDashboardContent() {
               <div>
                 <h3 className="font-bold text-base text-sheet-text mb-1">Move to Deleted Sheets?</h3>
                 <p className="text-xs text-slate-500">
-                  The sheet will remain recoverable for <strong>5 days</strong>. After 5 days, it will be permanently deleted and cannot be restored.
+                  The sheet will move to <strong>Settings &gt; Account &gt; Deleted Sheets</strong> and stay recoverable for <strong>5 days</strong>. After that, it will be permanently deleted from the database.
                 </p>
               </div>
             </div>
