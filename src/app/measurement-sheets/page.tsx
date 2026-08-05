@@ -56,6 +56,7 @@ import {
   isSheetPastRetention,
   purgeExpiredOwnerSheets,
 } from "@/lib/measurementRetention";
+import { calculateSheetTotal } from "@/lib/measurementExport";
 
 interface SelectedPerson {
   userId: string;
@@ -1125,9 +1126,17 @@ function MeasurementDashboardContent() {
                       {s.title}
                     </h3>
 
-                    <div className="flex items-center gap-1 text-xs text-slate-500 mb-3">
+                    <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
                       <Calendar size={13} />
                       <span>{s.date}</span>
+                    </div>
+
+                    {/* Total SQF Badge */}
+                    <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200/60">
+                      <Ruler size={13} className="text-emerald-600" />
+                      <span className="text-[11px] font-bold text-emerald-700">
+                        Total SQF: {calculateSheetTotal(s).toFixed(2)}
+                      </span>
                     </div>
 
                     <div className="text-xs text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-xl border border-sheet-border/60">

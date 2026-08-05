@@ -50,16 +50,19 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
 
   const selectedUser = users.find(u => u.uid === value);
 
-  const filteredUsers = users.filter((u) => {
-    if (excludeUserIds.includes(u.uid) && u.uid !== value) return false;
-    if (!search.trim()) return true;
-    const s = search.toLowerCase();
-    return (
-      u.displayName.toLowerCase().includes(s) ||
-      (u.nickname && u.nickname.toLowerCase().includes(s)) ||
-      (u.email && u.email.toLowerCase().includes(s))
-    );
-  });
+  const hasSearch = search.trim().length > 0;
+
+  const filteredUsers = hasSearch
+    ? users.filter((u) => {
+        if (excludeUserIds.includes(u.uid) && u.uid !== value) return false;
+        const s = search.toLowerCase();
+        return (
+          u.displayName.toLowerCase().includes(s) ||
+          (u.nickname && u.nickname.toLowerCase().includes(s)) ||
+          (u.email && u.email.toLowerCase().includes(s))
+        );
+      })
+    : [];
 
   return (
     <div className="relative" ref={containerRef}>
@@ -68,20 +71,20 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40 text-left flex items-center justify-between"
       >
-        <span className={selectedUser ? "text-sheet-text" : "text-sheet-muted"}>
+        <span className={selectedUser ? "text-sheet-text font-medium" : "text-sheet-muted"}>
           {selectedUser ? selectedUser.displayName : placeholder}
         </span>
         <ChevronDown size={14} className="text-sheet-muted shrink-0 ml-2" />
       </button>
 
       {isOpen && (
-        <div className="mt-2 bg-white border border-sheet-border rounded-xl shadow-lg z-50 flex flex-col overflow-hidden min-h-[16rem] max-h-[min(22rem,50vh)]">
+        <div className="mt-2 bg-white border border-sheet-border rounded-xl shadow-lg z-50 flex flex-col overflow-hidden min-h-[12rem] max-h-[min(22rem,50vh)]">
           <div className="p-2 border-b border-sheet-border shrink-0">
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sheet-muted" />
               <input
                 type="text"
-                placeholder="Search name, nickname, or email..."
+                placeholder="Type name, nickname, or email to search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-sheet-bg border border-sheet-border rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-emerald-500/40"
@@ -89,12 +92,16 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
               />
             </div>
           </div>
-          <div className="overflow-y-auto p-1 flex-1 min-h-[12rem]">
+          <div className="overflow-y-auto p-1 flex-1 min-h-[8rem]">
             {loading ? (
               <div className="p-4 text-xs text-center text-sheet-muted">Loading users...</div>
+            ) : !hasSearch ? (
+              <div className="p-4 text-xs text-center text-slate-400 font-medium">
+                Type to search for people…
+              </div>
             ) : filteredUsers.length === 0 ? (
               <div className="p-4 text-xs text-center text-sheet-muted">
-                {search.trim() ? "No matching users found." : "No users available."}
+                No matching users found for "{search}".
               </div>
             ) : (
               filteredUsers.map((u) => (

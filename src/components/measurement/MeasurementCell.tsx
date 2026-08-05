@@ -38,14 +38,28 @@ function MeasurementCellComponent({
   const pendingInputValueRef = useRef<string | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Keep a ref to the latest onChange so commitEdit never uses a stale closure
+  const onChangeRef = useRef(onChange);
   useEffect(() => {
-    if (editing) {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const isEditingRef = useRef(false);
+  // Track whether we already committed to avoid double-fire (blur + Enter)
+  const hasCommittedRef = useRef(false);
+
+  useEffect(() => {
+    if (editing && !isEditingRef.current) {
+      isEditingRef.current = true;
+      hasCommittedRef.current = false;
       if (pendingInputValueRef.current !== null) {
         setInputValue(pendingInputValueRef.current);
         pendingInputValueRef.current = null;
       } else {
         setInputValue(value != null && !isNaN(value) ? String(value) : "");
       }
+    } else if (!editing) {
+      isEditingRef.current = false;
     }
   }, [editing, value]);
 
@@ -77,25 +91,23 @@ function MeasurementCellComponent({
   );
 
   const commitEdit = useCallback(() => {
+    // Guard against double-commit (Enter fires commitEdit, then blur fires it again)
+    if (hasCommittedRef.current) return;
+    hasCommittedRef.current = true;
+
     setEditing(false);
-    const trimmed = inputValue.trim();
+    // Always read the live DOM value — React state may be one tick behind
+    const rawVal = inputRef.current ? inputRef.current.value : "";
+    const trimmed = rawVal.trim();
     if (trimmed === "") {
-      onChange(null);
+      onChangeRef.current(null);
     } else {
       const parsed = parseFloat(trimmed);
       if (!isNaN(parsed) && parsed >= 0) {
-        onChange(parsed);
+        onChangeRef.current(parsed);
       }
     }
-  }, [inputValue, onChange]);
-
-  const finishEditAndAdvance = useCallback(
-    (e: React.KeyboardEvent) => {
-      commitEdit();
-      onKeyDownNav(e);
-    },
-    [commitEdit, onKeyDownNav]
-  );
+  }, []); // No dependencies — reads from refs only
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (editing) {
@@ -104,6 +116,7 @@ function MeasurementCellComponent({
         commitEdit();
         onKeyDownNav(e);
       } else if (e.key === "Escape") {
+        hasCommittedRef.current = true; // prevent blur from saving
         setEditing(false);
       }
     } else {

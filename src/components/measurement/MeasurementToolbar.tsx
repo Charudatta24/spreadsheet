@@ -15,11 +15,12 @@ import {
   User,
   FileSpreadsheet,
   Shield,
+  FileText,
   Clock,
   Lock,
 } from "lucide-react";
 import type { MeasurementSheet, SaveState, WorkerPermissions } from "@/types";
-import { exportMeasurementToExcel, exportMeasurementToCSV, calculateSheetTotal } from "@/lib/measurementExport";
+import { exportMeasurementToExcel, exportMeasurementToCSV, exportMeasurementToPDF, calculateSheetTotal } from "@/lib/measurementExport";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
 
 interface MeasurementToolbarProps {
@@ -245,6 +246,16 @@ export function MeasurementToolbar({
           >
             <Download size={13} />
             <span>Excel</span>
+          </button>
+
+          {/* PDF Export */}
+          <button
+            onClick={() => exportMeasurementToPDF(sheet)}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+            title="Download as PDF"
+          >
+            <FileText size={13} />
+            <span>PDF</span>
           </button>
         </div>
       </div>

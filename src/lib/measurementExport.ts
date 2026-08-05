@@ -123,6 +123,9 @@ export function calculateSheetTotal(sheet: MeasurementSheet): number {
   return total;
 }
 
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 /**
  * Export MeasurementSheet to a formatted Excel .xlsx file.
  */
@@ -132,35 +135,46 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
   sheet.people.forEach((person, idx) => {
     const sheetData: (string | number)[][] = [];
 
-    // Table Headers & Rows — clean column names, S.No., Remark, no metadata
+    // Filter out empty rows (where Length and Height are empty/null)
+    const nonEmptyRows = person.rows.filter((r) => {
+      if (sheet.sheetCategory === "cutting") {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0);
+      } else if (sheet.locationType === "local") {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.remark && r.remark.trim() !== "");
+      } else {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0) || (r.D != null && r.D !== 0) || (r.remark && r.remark.trim() !== "");
+      }
+    });
+
+    // Table Headers & Rows — clean column names, S.No., Remark, SQF
     if (sheet.sheetCategory === "cutting") {
-      sheetData.push(["S.No.", "Length", "Height", "No. of Slabs", "Calculated"]);
-      person.rows.forEach((r, i) => {
+      sheetData.push(["S.No.", "Length", "Height", "No. of Slabs", "SQF"]);
+      nonEmptyRows.forEach((r, i) => {
         const calcVal = calculateCuttingRowResult(r.A, r.B, r.C);
         sheetData.push([
           r.serialNumber ?? (i + 1),
-          r.A ?? "",
-          r.B ?? "",
-          r.C ?? "",
-          calcVal > 0 ? calcVal : "",
+          r.A ?? "-",
+          r.B ?? "-",
+          r.C ?? "-",
+          calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
         ]);
       });
       const pTotal = calculateCuttingPersonTotal(person.rows);
-      sheetData.push(["", "", "", "Total:", pTotal]);
+      sheetData.push(["", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2))]);
     } else if (sheet.locationType === "local") {
-      sheetData.push(["S.No.", "Length", "Height", "Calculated", "Remark"]);
-      person.rows.forEach((r, i) => {
+      sheetData.push(["S.No.", "Length", "Height", "SQF", "Remark"]);
+      nonEmptyRows.forEach((r, i) => {
         const calcVal = calculateRowResult("local", r.A, r.B, r.C);
         sheetData.push([
           r.serialNumber ?? (i + 1),
-          r.A ?? "",
-          r.B ?? "",
-          calcVal > 0 ? calcVal : "",
-          r.remark ?? "",
+          r.A ?? "-",
+          r.B ?? "-",
+          calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+          r.remark || "-",
         ]);
       });
       const pTotal = calculatePersonTotal("local", person.rows);
-      sheetData.push(["", "", "Total:", pTotal, ""]);
+      sheetData.push(["", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), ""]);
     } else {
       const isCustomerNational = sheet.personType === "customer";
       if (isCustomerNational) {
@@ -170,67 +184,65 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
           "Length (CM)",
           "Height",
           "Height (CM)",
-          "Calculated",
+          "SQF",
           "Calculated (CM)",
           "Remark",
         ]);
-        person.rows.forEach((r, i) => {
+        nonEmptyRows.forEach((r, i) => {
           const calcVal = calculateRowResult("national", r.A, r.B, r.C);
           const calcCmVal = calculateNationalCmResult(r.B, r.D);
           sheetData.push([
             r.serialNumber ?? (i + 1),
-            r.A ?? "",
-            r.B ?? "",
-            r.C ?? "",
-            r.D ?? "",
-            calcVal > 0 ? calcVal : "",
-            calcCmVal > 0 ? calcCmVal : "",
-            r.remark ?? "",
+            r.A ?? "-",
+            r.B ?? "-",
+            r.C ?? "-",
+            r.D ?? "-",
+            calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+            calcCmVal > 0 ? parseFloat(calcCmVal.toFixed(2)) : "-",
+            r.remark || "-",
           ]);
         });
         const pTotal = calculatePersonTotal("national", person.rows);
         const pCmTotal = calculatePersonCmTotal(person.rows);
-        sheetData.push(["", "", "", "", "Total:", pTotal, pCmTotal, ""]);
+        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), parseFloat(pCmTotal.toFixed(2)), ""]);
       } else {
-        sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "Calculated", "Remark"]);
-        person.rows.forEach((r, i) => {
+        sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "SQF", "Remark"]);
+        nonEmptyRows.forEach((r, i) => {
           const calcVal = calculateRowResult("national", r.A, r.B, r.C);
           sheetData.push([
             r.serialNumber ?? (i + 1),
-            r.A ?? "",
-            r.B ?? "",
-            r.C ?? "",
-            r.D ?? "",
-            calcVal > 0 ? calcVal : "",
-            r.remark ?? "",
+            r.A ?? "-",
+            r.B ?? "-",
+            r.C ?? "-",
+            r.D ?? "-",
+            calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+            r.remark || "-",
           ]);
         });
         const pTotal = calculatePersonTotal("national", person.rows);
-        sheetData.push(["", "", "", "", "Total:", pTotal, ""]);
+        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), ""]);
       }
     }
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    // Set column widths
-    const colWidths =
-      sheet.sheetCategory === "cutting"
-        ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }]
-        : sheet.locationType === "local"
-        ? [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 24 }]
-        : sheet.personType === "customer"
-        ? [
-            { wch: 8 },
-            { wch: 12 },
-            { wch: 14 },
-            { wch: 12 },
-            { wch: 14 },
-            { wch: 16 },
-            { wch: 18 },
-            { wch: 24 },
-          ]
-        : [{ wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }];
+    // Auto-fit column widths and set center alignment
+    const colWidths = Array.from({ length: sheetData[0]?.length || 5 }, (_, colIdx) => {
+      let maxLen = 8;
+      sheetData.forEach((row) => {
+        const cellVal = String(row[colIdx] ?? "");
+        if (cellVal.length > maxLen) maxLen = cellVal.length;
+      });
+      return { wch: Math.max(maxLen + 5, 12) };
+    });
     ws["!cols"] = colWidths;
+
+    // Apply center alignment to all cells
+    Object.keys(ws).forEach((cellKey) => {
+      if (cellKey.startsWith("!")) return;
+      if (!ws[cellKey].s) ws[cellKey].s = {};
+      ws[cellKey].s.alignment = { horizontal: "center", vertical: "center" };
+    });
 
     const sheetTabName = sanitizeSheetName(person.name || `Person ${idx + 1}`);
     XLSX.utils.book_append_sheet(wb, ws, sheetTabName);
@@ -244,6 +256,155 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
       : `Measurement_Sheet_Multiple_${formattedDate}.xlsx`;
 
   XLSX.writeFile(wb, fileName);
+}
+
+/**
+ * Export MeasurementSheet to PDF file with 30-row pagination, subtotals, and grand total.
+ */
+export function exportMeasurementToPDF(sheet: MeasurementSheet) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+  let isFirstPage = true;
+  let overallGrandTotalSqf = 0;
+
+  sheet.people.forEach((person, personIdx) => {
+    // Filter non-empty rows for this person
+    const nonEmptyRows = person.rows.filter((r) => {
+      if (sheet.sheetCategory === "cutting") {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0);
+      } else if (sheet.locationType === "local") {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.remark && r.remark.trim() !== "");
+      } else {
+        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0) || (r.D != null && r.D !== 0) || (r.remark && r.remark.trim() !== "");
+      }
+    });
+
+    const isCutting = sheet.sheetCategory === "cutting";
+    const isLocal = sheet.locationType === "local";
+
+    // Split non-empty rows into chunks of 30 rows
+    const chunkSize = 30;
+    const chunks: (typeof nonEmptyRows)[] = [];
+    if (nonEmptyRows.length === 0) {
+      chunks.push([]);
+    } else {
+      for (let i = 0; i < nonEmptyRows.length; i += chunkSize) {
+        chunks.push(nonEmptyRows.slice(i, i + chunkSize));
+      }
+    }
+
+    chunks.forEach((chunk, chunkIdx) => {
+      if (!isFirstPage) {
+        doc.addPage();
+      }
+      isFirstPage = false;
+
+      // Header Banner
+      doc.setFillColor(16, 185, 129); // Emerald-600
+      doc.rect(0, 0, 595, 55, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${sheet.title}`, 20, 32);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${sheet.date}  |  Person: ${person.name || "Main"}  |  Page ${chunkIdx + 1} of ${chunks.length}`, 320, 32);
+
+      // Table columns & rows
+      let head: string[][] = [];
+      let body: (string | number)[][] = [];
+
+      if (isCutting) {
+        head = [["S.No.", "Length", "Height", "No. of Slabs", "SQF"]];
+        chunk.forEach((r, i) => {
+          const calcVal = calculateCuttingRowResult(r.A, r.B, r.C);
+          body.push([
+            r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+            r.A ?? "-",
+            r.B ?? "-",
+            r.C ?? "-",
+            calcVal > 0 ? calcVal.toFixed(2) : "-",
+          ]);
+        });
+      } else if (isLocal) {
+        head = [["S.No.", "Length", "Height", "SQF", "Remark"]];
+        chunk.forEach((r, i) => {
+          const calcVal = calculateRowResult("local", r.A, r.B, r.C);
+          body.push([
+            r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+            r.A ?? "-",
+            r.B ?? "-",
+            calcVal > 0 ? calcVal.toFixed(2) : "-",
+            r.remark || "-",
+          ]);
+        });
+      } else {
+        head = [["S.No.", "Length", "Length CM", "Height", "Height CM", "SQF", "Remark"]];
+        chunk.forEach((r, i) => {
+          const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+          body.push([
+            r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+            r.A ?? "-",
+            r.B ?? "-",
+            r.C ?? "-",
+            r.D ?? "-",
+            calcVal > 0 ? calcVal.toFixed(2) : "-",
+            r.remark || "-",
+          ]);
+        });
+      }
+
+      // Compute Chunk Subtotal
+      let chunkSubtotalSqf = 0;
+      chunk.forEach((r) => {
+        if (isCutting) {
+          chunkSubtotalSqf += calculateCuttingRowResult(r.A, r.B, r.C);
+        } else {
+          chunkSubtotalSqf += calculateRowResult(sheet.locationType, r.A, r.B, r.C);
+        }
+      });
+      overallGrandTotalSqf += chunkSubtotalSqf;
+
+      // Add subtotal row at bottom of 30-row chunk
+      if (isCutting) {
+        body.push(["", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+      } else if (isLocal) {
+        body.push(["", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+      } else {
+        body.push(["", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+      }
+
+      autoTable(doc, {
+        startY: 70,
+        head: head,
+        body: body,
+        theme: "striped",
+        headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: "bold", halign: "center" },
+        bodyStyles: { halign: "center", fontSize: 9 },
+        styles: { cellPadding: 5, overflow: "linebreak" },
+      });
+    });
+  });
+
+  // Final Overall Grand Total Section at the end
+  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 25 : 500;
+  if (finalY > 750) {
+    doc.addPage();
+  }
+  const grandY = finalY > 750 ? 50 : finalY;
+
+  doc.setFillColor(15, 23, 42); // Slate-900
+  doc.roundedRect(40, grandY, 515, 40, 8, 8, "F");
+
+  doc.setTextColor(52, 211, 153); // Emerald-400
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text(`GRAND OVERALL TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF`, 297, grandY + 25, { align: "center" });
+
+  const fileName = `Measurement_${sheet.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  doc.save(fileName);
 }
 
 /**

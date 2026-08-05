@@ -68,14 +68,14 @@ export function MeasurementGrid({
         { key: "A", label: "Length", isCalc: false },
         { key: "B", label: "Height", isCalc: false },
         { key: "C", label: "No. of Slabs", isCalc: false },
-        { key: "E", label: "Calculated", isCalc: true },
+        { key: "E", label: "SQF", isCalc: true },
       ]
     : isLocal
     ? [
         { key: "SNO", label: "S.No.", isCalc: false, isSno: true },
         { key: "A", label: "Length", isCalc: false },
         { key: "B", label: "Height", isCalc: false },
-        { key: "C", label: "Calculated", isCalc: true },
+        { key: "C", label: "SQF", isCalc: true },
         ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ]
     : [
@@ -84,7 +84,7 @@ export function MeasurementGrid({
         { key: "B", label: "Length (CM)", isCalc: false },
         { key: "C", label: "Height", isCalc: false },
         { key: "D", label: "Height (CM)", isCalc: false },
-        { key: "E", label: "Calculated", isCalc: true },
+        { key: "E", label: "SQF", isCalc: true },
         ...(showNationalCmCalc
           ? [{ key: "F", label: "Calculated (CM)", isCalc: true, isCalcCm: true }]
           : []),
@@ -453,7 +453,7 @@ export function MeasurementGrid({
                 colSpan={footerLabelColSpan}
                 className="px-2 sm:px-3 py-2 text-right font-semibold text-slate-500 border-r border-sheet-border text-[10px] sm:text-xs"
               >
-                TOTAL =
+                TOTAL SQF =
               </td>
               <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
                 {totalVal}
