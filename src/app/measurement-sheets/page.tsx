@@ -768,19 +768,45 @@ function MeasurementDashboardContent() {
       return matchTitle || matchDate || matchPeople;
     })
     .sort((a, b) => {
+      const getSheetDateISO = (s: MeasurementSheet): string => {
+        if (s.dateISO) return s.dateISO;
+        if (s.date) return parseSheetDateISO(s.date);
+        return "0000-00-00";
+      };
+
+      const getSheetTimeMillis = (s: MeasurementSheet): number => {
+        if ((s as any).createdAt?.toMillis) return (s as any).createdAt.toMillis();
+        if ((s as any).createdAt?.seconds) return (s as any).createdAt.seconds * 1000;
+        if (typeof (s as any).createdAt === "number") return (s as any).createdAt;
+        return 0;
+      };
+
       if (sortBy === "oldest") {
-        const at = a.createdAt?.toMillis?.() ?? 0;
-        const bt = b.createdAt?.toMillis?.() ?? 0;
-        return at - bt;
+        const dateA = getSheetDateISO(a);
+        const dateB = getSheetDateISO(b);
+        if (dateA !== dateB) {
+          return dateA.localeCompare(dateB); // Oldest date first
+        }
+        return getSheetTimeMillis(a) - getSheetTimeMillis(b); // Oldest time first
       }
+
       if (sortBy === "modified") {
-        const at = a.updatedAt?.toMillis?.() ?? 0;
-        const bt = b.updatedAt?.toMillis?.() ?? 0;
-        return bt - at;
+        const getMod = (s: any) => {
+          if (s.updatedAt?.toMillis) return s.updatedAt.toMillis();
+          if (s.updatedAt?.seconds) return s.updatedAt.seconds * 1000;
+          return 0;
+        };
+        return getMod(b) - getMod(a);
       }
-      const at = a.createdAt?.toMillis?.() ?? 0;
-      const bt = b.createdAt?.toMillis?.() ?? 0;
-      return bt - at;
+
+      // Default ("newest"): Date-wise descending (newest date first),
+      // and for 2 or more sheets on the same date: time-wise descending (newest time first)
+      const dateA = getSheetDateISO(a);
+      const dateB = getSheetDateISO(b);
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA); // Newest date first
+      }
+      return getSheetTimeMillis(b) - getSheetTimeMillis(a); // Newest created time first
     });
 
   const getAlreadySelectedIds = (currentIndex: number): string[] => {
