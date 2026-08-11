@@ -91,11 +91,11 @@ export function MeasurementGrid({
         ...(isCustomerSheet ? [{ key: "REMARK", label: "Remark", isCalc: false, isRemark: true }] : []),
       ];
   // Effective permissions
-  const canEditSerial = isOwner || (permissions?.canModifySerialNumbers && !isReadonlyDay);
-  const canEditMeasurements = isOwner || (permissions?.canModifyMeasurements && !isReadonlyDay);
-  const canEditRemarks = isOwner || (permissions?.canModifyRemarks && !isReadonlyDay);
-  const canAddRows = isOwner || (permissions?.canAddRows && !isReadonlyDay);
-  const canDeleteRows = isOwner || (permissions?.canDeleteRows && !isReadonlyDay);
+  const canEditSerial = isOwner || Boolean(permissions?.canModifySerialNumbers);
+  const canEditMeasurements = isOwner || Boolean(permissions?.canModifyMeasurements);
+  const canEditRemarks = isOwner || Boolean(permissions?.canModifyRemarks);
+  const canAddRows = isOwner || Boolean(permissions?.canAddRows);
+  const canDeleteRows = isOwner || Boolean(permissions?.canDeleteRows);
 
   // Ensure initial rows have valid serialNumbers starting at startingSerialNumber
   useEffect(() => {
@@ -114,26 +114,35 @@ export function MeasurementGrid({
     }
   }, [rows.length, startingSerialNumber, onChangeRows]);
 
+  // Keep a ref to the latest rows so updateCellData/addRow never capture stale data
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
+  const onChangeRowsRef = useRef(onChangeRows);
+  onChangeRowsRef.current = onChangeRows;
+
   // Helper to handle rows update.
   // For Worker sheets: auto-sort ascending by serialNumber.
   // For Customer sheets: DO NOT auto-sort by serialNumber (fixed order as assigned).
-  const notifyRowsChange = (updatedRows: MeasurementRow[]) => {
+  const notifyRowsChange = useCallback((updatedRows: MeasurementRow[]) => {
+    let result: MeasurementRow[];
     if (isCustomerSheet) {
-      const reindexed = updatedRows.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
-      onChangeRows(reindexed);
+      result = updatedRows.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
     } else {
       const sorted = [...updatedRows].sort((a, b) => a.serialNumber - b.serialNumber);
-      const reindexed = sorted.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
-      onChangeRows(reindexed);
+      result = sorted.map((r, idx) => ({ ...r, rowNumber: idx + 1 }));
     }
-  };
+    rowsRef.current = result;
+    onChangeRowsRef.current(result);
+  }, [isCustomerSheet]);
 
   const addRow = useCallback(() => {
     if (!canAddRows) return;
-    const maxSno = rows.reduce((max, r) => Math.max(max, r.serialNumber ?? 0), startingSerialNumber - 1);
+    const currentRows = rowsRef.current;
+    const maxSno = currentRows.reduce((max, r) => Math.max(max, r.serialNumber ?? 0), startingSerialNumber - 1);
     const newSno = Math.max(maxSno + 1, startingSerialNumber);
     const newRow: MeasurementRow = {
-      rowNumber: rows.length + 1,
+      rowNumber: currentRows.length + 1,
       serialNumber: newSno,
       A: null,
       B: null,
@@ -142,37 +151,40 @@ export function MeasurementGrid({
       E: null,
       remark: "",
     };
-    notifyRowsChange([...rows, newRow]);
-  }, [rows, startingSerialNumber, canAddRows, isCustomerSheet]);
+    notifyRowsChange([...currentRows, newRow]);
+  }, [startingSerialNumber, canAddRows, notifyRowsChange]);
 
   const deleteRow = useCallback(
     (index: number) => {
-      if (!canDeleteRows || rows.length <= 1) return;
-      const updated = rows.filter((_, i) => i !== index);
+      const currentRows = rowsRef.current;
+      if (!canDeleteRows || currentRows.length <= 1) return;
+      const updated = currentRows.filter((_, i) => i !== index);
       notifyRowsChange(updated);
     },
-    [rows, canDeleteRows, isCustomerSheet]
+    [canDeleteRows, notifyRowsChange]
   );
 
   const updateCellData = useCallback(
     (rowIdx: number, colKey: string, val: number | null) => {
+      const currentRows = rowsRef.current;
+
       if (colKey === "SNO") {
         if (!canEditSerial) return;
         const newSno = val == null ? startingSerialNumber : Math.floor(val);
         // Duplicate check
-        const isDuplicate = rows.some((r, i) => i !== rowIdx && r.serialNumber === newSno);
+        const isDuplicate = currentRows.some((r, i) => i !== rowIdx && r.serialNumber === newSno);
         if (isDuplicate) {
           setErrorMessage(`Serial number ${newSno} already exists!`);
           setTimeout(() => setErrorMessage(""), 3000);
           return;
         }
-        const updated = rows.map((r, i) => (i === rowIdx ? { ...r, serialNumber: newSno } : r));
+        const updated = currentRows.map((r, i) => (i === rowIdx ? { ...r, serialNumber: newSno } : r));
         notifyRowsChange(updated);
         return;
       }
 
       if (!canEditMeasurements) return;
-      const updated = rows.map((r, i) => {
+      const updated = currentRows.map((r, i) => {
         if (i !== rowIdx) return r;
         const copy = { ...r };
         if (colKey === "A") copy.A = val;
@@ -181,15 +193,18 @@ export function MeasurementGrid({
         if (colKey === "D") copy.D = val;
         return copy;
       });
-      onChangeRows(updated);
+      rowsRef.current = updated;
+      onChangeRowsRef.current(updated);
     },
-    [rows, canEditSerial, canEditMeasurements, startingSerialNumber, onChangeRows, isCustomerSheet]
+    [canEditSerial, canEditMeasurements, startingSerialNumber, notifyRowsChange]
   );
 
   const saveRemark = () => {
     if (editingRemarkRowIdx === null) return;
-    const updated = rows.map((r, i) => (i === editingRemarkRowIdx ? { ...r, remark: remarkInput.trim() } : r));
-    onChangeRows(updated);
+    const currentRows = rowsRef.current;
+    const updated = currentRows.map((r, i) => (i === editingRemarkRowIdx ? { ...r, remark: remarkInput.trim() } : r));
+    rowsRef.current = updated;
+    onChangeRowsRef.current(updated);
     setEditingRemarkRowIdx(null);
     setRemarkInput("");
   };

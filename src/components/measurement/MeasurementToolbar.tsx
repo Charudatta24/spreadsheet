@@ -95,10 +95,10 @@ export function MeasurementToolbar({
   // Determine permission indicator label
   const permBadgeLabel = isOwner
     ? "Owner"
-    : isReadonlyDay
-    ? "Completed / Read Only"
     : currentUserPermissions?.canModifyMeasurements
     ? "View + Edit"
+    : isReadonlyDay
+    ? "Completed / Read Only"
     : "View Only";
 
   return (
@@ -168,9 +168,9 @@ export function MeasurementToolbar({
             className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
               isOwner
                 ? "bg-purple-50 text-purple-700 border border-purple-200"
-                : isReadonlyDay
-                ? "bg-amber-50 text-amber-700 border border-amber-200"
-                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : currentUserPermissions?.canModifyMeasurements
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
             }`}
           >
             <Shield size={11} />

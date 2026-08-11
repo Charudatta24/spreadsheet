@@ -39,10 +39,9 @@ function MeasurementCellComponent({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep a ref to the latest onChange so commitEdit never uses a stale closure
+  // Updated synchronously during render (NOT in useEffect) to avoid timing gaps
   const onChangeRef = useRef(onChange);
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+  onChangeRef.current = onChange;
 
   const isEditingRef = useRef(false);
   // Track whether we already committed to avoid double-fire (blur + Enter)

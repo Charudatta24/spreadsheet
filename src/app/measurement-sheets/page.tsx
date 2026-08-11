@@ -81,6 +81,23 @@ const DEFAULT_WORKER_PERMISSIONS: WorkerPermissions = {
   canDeleteRows: false,
 };
 
+const READONLY_WORKER_PERMISSIONS: WorkerPermissions = {
+  canView: true,
+  canModifyMeasurements: false,
+  canModifySerialNumbers: false,
+  canModifyRemarks: false,
+  canAddRows: false,
+  canDeleteRows: false,
+};
+
+function getDefaultPermissionsForDate(dateISO?: string | null): WorkerPermissions {
+  const todayISO = format(new Date(), "yyyy-MM-dd");
+  if (dateISO && todayISO > dateISO) {
+    return { ...READONLY_WORKER_PERMISSIONS };
+  }
+  return { ...DEFAULT_WORKER_PERMISSIONS };
+}
+
 /** Cutting sheets keep machines in `people`; invitees live in invitedWorkers / cuttingData.polishes. */
 function getCuttingInvitees(sheet: MeasurementSheet): PersonMeasurement[] {
   const byUserId = new Map<string, PersonMeasurement>();
@@ -360,6 +377,10 @@ function MeasurementDashboardContent() {
     const np2 = typeof numPeople === "number" ? numPeople : 0;
     const chosenPeople = selectedPeople.slice(0, np2).filter((p) => p.userId && p.name);
 
+    const dateISO = parseSheetDateISO(formDate);
+    const dateTimestamp = Timestamp.fromDate(new Date(`${dateISO}T12:00:00`));
+    const defaultPerms = getDefaultPermissionsForDate(dateISO);
+
     if (category === "cutting") {
       // Machines stay in `people` as tabs; invited people are stored separately.
       people = Array.from({ length: safeMachinesValue }, (_, i) => ({
@@ -377,7 +398,7 @@ function MeasurementDashboardContent() {
         userId: p.userId,
         status: "pending" as const,
         rows: buildRows(sno),
-        permissions: { ...DEFAULT_WORKER_PERMISSIONS },
+        permissions: { ...defaultPerms },
       }));
       participantIds = Array.from(new Set([user.uid, ...chosenPeople.map((p) => p.userId).filter((id): id is string => Boolean(id))]));
     }
@@ -391,15 +412,11 @@ function MeasurementDashboardContent() {
         ? `Polishes (${people.length})`
         : `Customers (${people.length})`;
 
-    const dateISO = parseSheetDateISO(formDate);
-    // Noon local avoids midnight timezone edge-cases in Firestore date-window rules
-    const dateTimestamp = Timestamp.fromDate(new Date(`${dateISO}T12:00:00`));
-
     const invitedWorkers = chosenPeople.map((p) => ({
       userId: p.userId,
       name: p.name,
       status: "pending" as const,
-      permissions: { ...DEFAULT_WORKER_PERMISSIONS },
+      permissions: { ...defaultPerms },
     }));
 
     const docData: any = {
@@ -432,7 +449,7 @@ function MeasurementDashboardContent() {
                 userId: p.userId || "",
                 name: p.name || "",
                 status: "pending" as const,
-                permissions: { ...DEFAULT_WORKER_PERMISSIONS },
+                permissions: { ...defaultPerms },
               })),
               machines: Array.from({ length: safeMachinesValue }, (_, i) => ({
                 id: `machine_${i + 1}`,
@@ -543,7 +560,7 @@ function MeasurementDashboardContent() {
             userId: p.userId as string,
             name: p.name,
             status: p.status || ("pending" as const),
-            permissions: p.permissions || DEFAULT_WORKER_PERMISSIONS,
+            permissions: p.permissions || getDefaultPermissionsForDate(manageSheet.dateISO || manageSheet.date),
           }));
 
         await updateDoc(doc(db, "measurementSheets", manageSheet.id), {
@@ -1542,7 +1559,7 @@ function MeasurementDashboardContent() {
                                     E: null,
                                     remark: "",
                                   })),
-                            permissions: { ...DEFAULT_WORKER_PERMISSIONS },
+                            permissions: getDefaultPermissionsForDate(manageSheet?.dateISO || manageSheet?.date),
                           },
                         ]);
                       }

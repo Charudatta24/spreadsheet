@@ -77,17 +77,26 @@ export default function MeasurementSheetEditorPage() {
   const myPermissions: WorkerPermissions | undefined = useMemo(() => {
     if (isOwner) return undefined;
     const perms = (myPersonEntry as { permissions?: WorkerPermissions } | null)?.permissions;
-    return (
-      perms ?? {
+    if (perms) return perms;
+    if (isReadonlyDay) {
+      return {
         canView: true,
-        canModifyMeasurements: true,
+        canModifyMeasurements: false,
         canModifySerialNumbers: false,
-        canModifyRemarks: true,
-        canAddRows: true,
+        canModifyRemarks: false,
+        canAddRows: false,
         canDeleteRows: false,
-      }
-    );
-  }, [isOwner, myPersonEntry]);
+      };
+    }
+    return {
+      canView: true,
+      canModifyMeasurements: true,
+      canModifySerialNumbers: false,
+      canModifyRemarks: true,
+      canAddRows: true,
+      canDeleteRows: false,
+    };
+  }, [isOwner, myPersonEntry, isReadonlyDay]);
 
   // Security guard: redirect if not authorized
   useEffect(() => {
@@ -218,7 +227,7 @@ export default function MeasurementSheetEditorPage() {
       <main className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 w-full max-w-5xl mx-auto">
 
         {/* Read-Only Banner for completed/past-day workers */}
-        {isReadonlyDay && !isOwner && (
+        {isReadonlyDay && !isOwner && !myPermissions?.canModifyMeasurements && (
           <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center gap-2 text-xs text-amber-700 font-medium">
             <Lock size={14} />
             <span>
