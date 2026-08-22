@@ -49,9 +49,6 @@ export function FactoryNamePromptModal() {
             <Building2 size={28} />
           </div>
           <h2 className="text-xl font-bold text-sheet-text mb-1">Enter your Factory Name</h2>
-          <p className="text-xs text-sheet-muted">
-            Your Factory Name will be displayed at the top of generated PDFs and measurement reports.
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

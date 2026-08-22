@@ -6,6 +6,7 @@ import {
     ArrowLeft, Mail, AtSign, Calendar, Building2,
     Pencil, Check, X, Loader2, UserCircle,
     Trash2, RotateCcw, AlertTriangle, Clock, Ruler, ShieldAlert,
+    BookOpen, Calculator, FileText, Layers, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { deleteUser } from "firebase/auth";
@@ -320,8 +321,8 @@ function AccountPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
-    const [activeTab, setActiveTab] = useState<"about" | "friends" | "trash">(
-        tabParam === "trash" ? "trash" : "about"
+    const [activeTab, setActiveTab] = useState<"about" | "formulas" | "friends" | "trash">(
+        tabParam === "trash" ? "trash" : tabParam === "formulas" ? "formulas" : "about"
     );
     const [friends, setFriends] = useState<FriendEntry[]>([]);
 
@@ -536,6 +537,13 @@ function AccountPageContent() {
                         onClick={() => setActiveTab("about")}
                     >About</button>
                     <button
+                        className={`rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap flex items-center gap-1.5 ${activeTab === "formulas" ? "bg-indigo-600 text-white" : "text-indigo-700 hover:bg-indigo-50 border border-indigo-200"}`}
+                        onClick={() => setActiveTab("formulas")}
+                    >
+                        <BookOpen size={13} />
+                        Formulas & Settings
+                    </button>
+                    <button
                         className={`rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === "friends" ? "bg-sheet-accent text-white" : "text-sheet-text hover:bg-sheet-bg"}`}
                         onClick={() => setActiveTab("friends")}
                     >Friends</button>
@@ -681,12 +689,8 @@ function AccountPageContent() {
                                     )}
                                 </div>
                             </div>
-                            {factoryError ? (
+                            {factoryError && (
                                 <p className="text-xs text-red-500">{factoryError}</p>
-                            ) : (
-                                <p className="text-xs text-sheet-muted">
-                                    Factory Name will be displayed at the top of generated PDFs and measurement reports.
-                                </p>
                             )}
                         </div>
                         <InfoRow
@@ -722,6 +726,133 @@ function AccountPageContent() {
                                 <Trash2 size={14} />
                                 Delete Account
                             </button>
+                        </div>
+                    </div>
+                )}
+                {activeTab === "formulas" && (
+                    <div className="space-y-4">
+                        {/* Section 1: Factory Name Settings */}
+                        <div className="bg-white rounded-2xl border border-sheet-border p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                                    <Building2 size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800">Factory Name & Branding</h3>
+                                    <p className="text-xs text-slate-500">Configured factory name appears in all PDF exports and measurement reports.</p>
+                                </div>
+                            </div>
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-600">Current Factory Name:</span>
+                                <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
+                                    {user.factoryName || "Not set"}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Section 2: Mathematical Formulas */}
+                        <div className="bg-white rounded-2xl border border-sheet-border p-5 shadow-sm space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                                    <Calculator size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800">Measurement Formulas</h3>
+                                    <p className="text-xs text-slate-500">Exact formulas used across Local, National, and Cutting sheets</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pt-2">
+                                {/* Local SQF */}
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-slate-800">1. Local SQF (Square Feet)</span>
+                                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Local</span>
+                                    </div>
+                                    <p className="text-xs font-mono font-semibold text-slate-700 bg-white p-2 rounded border border-slate-200">
+                                        SQF = (Length in inches × Height in inches) ÷ 144
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 mt-1">
+                                        144 square inches equals 1 square foot (12" × 12").
+                                    </p>
+                                </div>
+
+                                {/* National SQF */}
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-slate-800">2. National SQF (Inches)</span>
+                                        <span className="text-[11px] font-mono font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">National</span>
+                                    </div>
+                                    <p className="text-xs font-mono font-semibold text-slate-700 bg-white p-2 rounded border border-slate-200">
+                                        SQF = (Length in inches [Col A] × Height in inches [Col C]) ÷ 144
+                                    </p>
+                                </div>
+
+                                {/* National SQF CM */}
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-slate-800">3. National SQF (Centimeters)</span>
+                                        <span className="text-[11px] font-mono font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">National CM</span>
+                                    </div>
+                                    <p className="text-xs font-mono font-semibold text-slate-700 bg-white p-2 rounded border border-slate-200">
+                                        SQF (CM) = (Length in cm [Col B] × Height in cm [Col D]) ÷ 929
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 mt-1">
+                                        929 sq cm is the conversion constant for 1 square foot (approx. 929.03 cm²).
+                                    </p>
+                                </div>
+
+                                {/* Cutting SQF */}
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-slate-800">4. Cutting Sheet SQF</span>
+                                        <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Cutting</span>
+                                    </div>
+                                    <p className="text-xs font-mono font-semibold text-slate-700 bg-white p-2 rounded border border-slate-200">
+                                        SQF = [(Length in inches × Height in inches) ÷ 144] × Number of Slabs
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section 3: System Rules & PDF Exports */}
+                        <div className="bg-white rounded-2xl border border-sheet-border p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                                    <FileText size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800">PDF & Export Format</h3>
+                                    <p className="text-xs text-slate-500">Structure of generated reports and spreadsheets</p>
+                                </div>
+                            </div>
+
+                            <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside pt-1">
+                                <li><strong>30-Row Pagination:</strong> PDFs split long sheets into chunks of 30 rows per page with page subtotals.</li>
+                                <li><strong>Factory Header:</strong> Displays your registered Factory Name prominently at the top header banner.</li>
+                                <li><strong>Grand Totals:</strong> Displays exact Grand Overall Totals (SQF and SQF CM) at the bottom.</li>
+                                <li><strong>Excel Exports:</strong> Cleanly aligned cells, auto-fitted column widths, and omitted empty rows.</li>
+                            </ul>
+                        </div>
+
+                        {/* Section 4: Permissions & Lock Rules */}
+                        <div className="bg-white rounded-2xl border border-sheet-border p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                                    <ShieldCheck size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800">Permissions & Past Day Lock</h3>
+                                    <p className="text-xs text-slate-500">Access control rules for owners and workers</p>
+                                </div>
+                            </div>
+
+                            <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside pt-1">
+                                <li><strong>Owners:</strong> Have full view and edit control over all current and past measurement sheets.</li>
+                                <li><strong>Past Day Auto-Lock:</strong> Non-owners are set to View-Only after the day completes.</li>
+                                <li><strong>Re-Enabling Worker Access:</strong> Owners can open the sheet's <em>"Change"</em> section and grant explicit <em>"Can Modify"</em> permissions to allow worker edits on past days.</li>
+                                <li><strong>Trash & Recovery:</strong> Soft-deleted sheets stay in Trash for 5 days before permanent cleanup.</li>
+                            </ul>
                         </div>
                     </div>
                 )}

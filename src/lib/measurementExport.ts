@@ -355,13 +355,10 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
 
-      const categoryLabel = (sheet.sheetCategory || "SHEET").toUpperCase();
-      const locationLabel = (sheet.locationType || "LOCAL").toUpperCase();
       const personLabel = person.name ? person.name.toUpperCase() : "MAIN";
 
       doc.text(`TITLE: ${sheet.title}`, 40, 86);
-      doc.text(`SECTION: ${categoryLabel} (${locationLabel})`, 220, 86);
-      doc.text(`PERSON: ${personLabel}`, 390, 86);
+      doc.text(`PERSON: ${personLabel}`, 300, 86);
       doc.text(`PAGE ${chunkIdx + 1}/${chunks.length}`, 510, 86);
 
       // ── Table Column Definition ─────────────────────────────────────────────
@@ -517,19 +514,19 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
   doc.setFillColor(15, 23, 42); // Slate-900
   doc.roundedRect(30, grandY, 535, 36, 6, 6, "F");
 
-  doc.setTextColor(52, 211, 153); // Emerald-400
+  doc.setTextColor(255, 255, 255); // Pure White
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
 
   if (overallGrandTotalSqfCm > 0) {
     doc.text(
-      `GRAND TOTAL: ${overallGrandTotalSqf.toFixed(3)} SQF  |  ${overallGrandTotalSqfCm.toFixed(3)} SQF (CM)`,
+      `GRAND TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF  |  ${overallGrandTotalSqfCm.toFixed(2)} SQF (CM)`,
       297,
       grandY + 22,
       { align: "center" }
     );
   } else {
-    doc.text(`GRAND TOTAL: ${overallGrandTotalSqf.toFixed(3)} SQF`, 297, grandY + 22, { align: "center" });
+    doc.text(`GRAND TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF`, 297, grandY + 22, { align: "center" });
   }
 
   const fileName = `Measurement_${sheet.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
