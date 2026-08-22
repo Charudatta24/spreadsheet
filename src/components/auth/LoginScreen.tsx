@@ -12,7 +12,7 @@ import { auth } from "@/lib/firebase/client";
 import { colorForUid } from "@/lib/sync/authStore";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingPortal } from "@/components/ui/LoadingPortal";
-import { getUserNickname, setUserProfile } from "@/lib/firebase/firestore";
+import { getUserProfile, setUserProfile } from "@/lib/firebase/firestore";
 import { NicknameModal } from "./NicknameModal";
 import { markOwnerRetentionNoticePending } from "@/lib/measurementRetention";
 import type { AppUser } from "@/types";
@@ -53,21 +53,27 @@ export function LoginScreen() {
 
     const color = colorForUid(uid);
 
-    let savedNickname: string | null = null;
+    let savedProfile: { displayName?: string; nickname?: string; accountType?: any; workType?: any } | null = null;
     try {
-      savedNickname = await getUserNickname(uid);
+      savedProfile = await getUserProfile(uid);
     } catch (e) {
-      console.error("Failed to fetch nickname after sign-in", e);
+      console.error("Failed to fetch user profile after sign-in", e);
     }
+
+    const savedNickname = savedProfile?.nickname ?? null;
+    const savedAccountType = savedProfile?.accountType ?? null;
+    const savedWorkType = savedProfile?.workType ?? null;
 
     const user: AppUser = {
       uid,
-      displayName: displayName || "User",
+      displayName: savedProfile?.displayName || displayName || "User",
       email,
       photoURL,
       color,
       isAnonymous: false,
       nickname: savedNickname ?? undefined,
+      accountType: savedAccountType ?? undefined,
+      workType: savedWorkType ?? undefined,
     };
 
     if (savedNickname) {
@@ -77,6 +83,8 @@ export function LoginScreen() {
           displayName: user.displayName,
           email: user.email,
           nickname: savedNickname,
+          accountType: savedAccountType ?? undefined,
+          workType: savedWorkType ?? undefined,
         });
       } catch (e) {
         console.error("Failed to update profile after sign-in", e);

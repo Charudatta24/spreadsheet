@@ -259,28 +259,45 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
 }
 
 /**
- * Export MeasurementSheet to PDF file with 30-row pagination, subtotals, and grand total.
+ * Export MeasurementSheet to PDF file with 30-row pagination, subtotals, Factory Name header, and grand total.
  */
-export function exportMeasurementToPDF(sheet: MeasurementSheet) {
+export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverride?: string) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+  // Resolve Factory Name from argument, sheet property, or fallback
+  const factoryName = (
+    factoryNameOverride ||
+    sheet.factoryName ||
+    (typeof window !== "undefined" && (window as any).__COLAB_FACTORY_NAME__) ||
+    "VALLEY STONE"
+  ).toUpperCase();
 
   let isFirstPage = true;
   let overallGrandTotalSqf = 0;
+  let overallGrandTotalSqfCm = 0;
+
+  const isCutting = sheet.sheetCategory === "cutting";
+  const isLocal = sheet.locationType === "local";
+  const isCustomer = sheet.personType === "customer";
+  const isNational = !isLocal;
 
   sheet.people.forEach((person, personIdx) => {
     // Filter non-empty rows for this person
     const nonEmptyRows = person.rows.filter((r) => {
-      if (sheet.sheetCategory === "cutting") {
+      if (isCutting) {
         return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0);
-      } else if (sheet.locationType === "local") {
+      } else if (isLocal) {
         return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.remark && r.remark.trim() !== "");
       } else {
-        return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0) || (r.D != null && r.D !== 0) || (r.remark && r.remark.trim() !== "");
+        return (
+          (r.A != null && r.A !== 0) ||
+          (r.B != null && r.B !== 0) ||
+          (r.C != null && r.C !== 0) ||
+          (r.D != null && r.D !== 0) ||
+          (r.remark && r.remark.trim() !== "")
+        );
       }
     });
-
-    const isCutting = sheet.sheetCategory === "cutting";
-    const isLocal = sheet.locationType === "local";
 
     // Split non-empty rows into chunks of 30 rows
     const chunkSize = 30;
@@ -299,39 +316,97 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet) {
       }
       isFirstPage = false;
 
-      // Header Banner
-      doc.setFillColor(16, 185, 129); // Emerald-600
-      doc.rect(0, 0, 595, 55, "F");
+      // ── Top Factory Header (Inspired by reference image) ─────────────────────
+      // Outer Header Border Box
+      doc.setDrawColor(203, 213, 225); // Slate-300
+      doc.setLineWidth(1);
+      doc.rect(30, 20, 535, 45);
+
+      // Factory Name (Bold Large Text)
+      doc.setTextColor(15, 23, 42); // Slate-900
+      doc.setFontSize(15);
+      doc.setFont("helvetica", "bold");
+      doc.text(factoryName, 42, 42);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139); // Slate-500
+      doc.text("GRANITE & MARBLE MEASUREMENT SHEET", 42, 54);
+
+      // Right Header Badge Box
+      doc.setFillColor(15, 23, 42);
+      doc.roundedRect(440, 26, 115, 32, 4, 4, "F");
 
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
+      doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
-      doc.text(`${sheet.title}`, 20, 32);
+      doc.text("MEASUREMENT SHEET", 497, 38, { align: "center" });
 
-      doc.setFontSize(9);
+      doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(`Date: ${sheet.date}  |  Person: ${person.name || "Main"}  |  Page ${chunkIdx + 1} of ${chunks.length}`, 320, 32);
+      doc.text(`${sheet.date}`, 497, 49, { align: "center" });
 
-      // Table columns & rows
+      // ── Metadata Bar ────────────────────────────────────────────────────────
+      doc.setFillColor(248, 250, 252); // Slate-50
+      doc.rect(30, 72, 535, 22, "F");
+      doc.rect(30, 72, 535, 22, "S");
+
+      doc.setTextColor(51, 65, 85);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+
+      const categoryLabel = (sheet.sheetCategory || "SHEET").toUpperCase();
+      const locationLabel = (sheet.locationType || "LOCAL").toUpperCase();
+      const personLabel = person.name ? person.name.toUpperCase() : "MAIN";
+
+      doc.text(`TITLE: ${sheet.title}`, 40, 86);
+      doc.text(`SECTION: ${categoryLabel} (${locationLabel})`, 220, 86);
+      doc.text(`PERSON: ${personLabel}`, 390, 86);
+      doc.text(`PAGE ${chunkIdx + 1}/${chunks.length}`, 510, 86);
+
+      // ── Table Column Definition ─────────────────────────────────────────────
       let head: string[][] = [];
       let body: (string | number)[][] = [];
 
+      let chunkSubtotalSqf = 0;
+      let chunkSubtotalSqfCm = 0;
+
       if (isCutting) {
-        head = [["S.No.", "Length", "Height", "No. of Slabs", "SQF"]];
-        chunk.forEach((r, i) => {
-          const calcVal = calculateCuttingRowResult(r.A, r.B, r.C);
-          body.push([
-            r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
-            r.A ?? "-",
-            r.B ?? "-",
-            r.C ?? "-",
-            calcVal > 0 ? calcVal.toFixed(2) : "-",
-          ]);
-        });
+        if (isNational) {
+          head = [["Pos", "L (in)", "L (cm)", "H (in)", "H (cm)", "Slabs", "SQF"]];
+          chunk.forEach((r, i) => {
+            const slabs = sheet.numSlabs || 1;
+            const calcVal = calculateCuttingRowResult(r.A, r.C, slabs);
+            chunkSubtotalSqf += calcVal;
+            body.push([
+              r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+              r.A ?? "-",
+              r.B ?? "-",
+              r.C ?? "-",
+              r.D ?? "-",
+              slabs,
+              calcVal > 0 ? calcVal.toFixed(2) : "-",
+            ]);
+          });
+        } else {
+          head = [["Pos", "L (in)", "H (in)", "Slabs", "SQF"]];
+          chunk.forEach((r, i) => {
+            const calcVal = calculateCuttingRowResult(r.A, r.B, r.C);
+            chunkSubtotalSqf += calcVal;
+            body.push([
+              r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+              r.A ?? "-",
+              r.B ?? "-",
+              r.C ?? "-",
+              calcVal > 0 ? calcVal.toFixed(2) : "-",
+            ]);
+          });
+        }
       } else if (isLocal) {
-        head = [["S.No.", "Length", "Height", "SQF", "Remark"]];
+        head = [["Pos", "L (in)", "H (in)", "SQF", "Remark"]];
         chunk.forEach((r, i) => {
           const calcVal = calculateRowResult("local", r.A, r.B, r.C);
+          chunkSubtotalSqf += calcVal;
           body.push([
             r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
             r.A ?? "-",
@@ -341,67 +416,121 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet) {
           ]);
         });
       } else {
-        head = [["S.No.", "Length", "Length CM", "Height", "Height CM", "SQF", "Remark"]];
-        chunk.forEach((r, i) => {
-          const calcVal = calculateRowResult("national", r.A, r.B, r.C);
-          body.push([
-            r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
-            r.A ?? "-",
-            r.B ?? "-",
-            r.C ?? "-",
-            r.D ?? "-",
-            calcVal > 0 ? calcVal.toFixed(2) : "-",
-            r.remark || "-",
-          ]);
-        });
+        // National Sheet (Polish / Customer)
+        if (isCustomer) {
+          head = [["Pos", "L (in)", "L (cm)", "H (in)", "H (cm)", "SQF", "SQF (cm)", "Remark"]];
+          chunk.forEach((r, i) => {
+            const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+            const calcCmVal = calculateNationalCmResult(r.B, r.D);
+            chunkSubtotalSqf += calcVal;
+            chunkSubtotalSqfCm += calcCmVal;
+            body.push([
+              r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+              r.A ?? "-",
+              r.B ?? "-",
+              r.C ?? "-",
+              r.D ?? "-",
+              calcVal > 0 ? calcVal.toFixed(2) : "-",
+              calcCmVal > 0 ? calcCmVal.toFixed(2) : "-",
+              r.remark || "-",
+            ]);
+          });
+        } else {
+          head = [["Pos", "L (in)", "L (cm)", "H (in)", "H (cm)", "SQF", "Remark"]];
+          chunk.forEach((r, i) => {
+            const calcVal = calculateRowResult("national", r.A, r.B, r.C);
+            chunkSubtotalSqf += calcVal;
+            body.push([
+              r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
+              r.A ?? "-",
+              r.B ?? "-",
+              r.C ?? "-",
+              r.D ?? "-",
+              calcVal > 0 ? calcVal.toFixed(2) : "-",
+              r.remark || "-",
+            ]);
+          });
+        }
       }
 
-      // Compute Chunk Subtotal
-      let chunkSubtotalSqf = 0;
-      chunk.forEach((r) => {
-        if (isCutting) {
-          chunkSubtotalSqf += calculateCuttingRowResult(r.A, r.B, r.C);
-        } else {
-          chunkSubtotalSqf += calculateRowResult(sheet.locationType, r.A, r.B, r.C);
-        }
-      });
       overallGrandTotalSqf += chunkSubtotalSqf;
+      overallGrandTotalSqfCm += chunkSubtotalSqfCm;
 
-      // Add subtotal row at bottom of 30-row chunk
+      // Add 30-row Subtotal Row
       if (isCutting) {
-        body.push(["", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+        if (isNational) {
+          body.push(["", "", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+        } else {
+          body.push(["", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+        }
       } else if (isLocal) {
         body.push(["", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
       } else {
-        body.push(["", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+        if (isCustomer) {
+          body.push([
+            "",
+            "",
+            "",
+            "",
+            "Page Subtotal:",
+            `${chunkSubtotalSqf.toFixed(2)} SQF`,
+            `${chunkSubtotalSqfCm.toFixed(2)} CM`,
+            "",
+          ]);
+        } else {
+          body.push(["", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+        }
       }
 
       autoTable(doc, {
-        startY: 70,
+        startY: 102,
         head: head,
         body: body,
-        theme: "striped",
-        headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: "bold", halign: "center" },
-        bodyStyles: { halign: "center", fontSize: 9 },
-        styles: { cellPadding: 5, overflow: "linebreak" },
+        theme: "grid",
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          halign: "center",
+          fontSize: 8.5,
+        },
+        bodyStyles: {
+          halign: "center",
+          fontSize: 8.5,
+          textColor: [30, 41, 59],
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        styles: { cellPadding: 4, overflow: "linebreak" },
       });
     });
   });
 
-  // Final Overall Grand Total Section at the end
-  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 25 : 500;
+  // Final Overall Grand Total Section
+  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 20 : 500;
   if (finalY > 750) {
     doc.addPage();
   }
   const grandY = finalY > 750 ? 50 : finalY;
 
   doc.setFillColor(15, 23, 42); // Slate-900
-  doc.roundedRect(40, grandY, 515, 40, 8, 8, "F");
+  doc.roundedRect(30, grandY, 535, 36, 6, 6, "F");
 
   doc.setTextColor(52, 211, 153); // Emerald-400
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(`GRAND OVERALL TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF`, 297, grandY + 25, { align: "center" });
+
+  if (overallGrandTotalSqfCm > 0) {
+    doc.text(
+      `GRAND TOTAL: ${overallGrandTotalSqf.toFixed(3)} SQF  |  ${overallGrandTotalSqfCm.toFixed(3)} SQF (CM)`,
+      297,
+      grandY + 22,
+      { align: "center" }
+    );
+  } else {
+    doc.text(`GRAND TOTAL: ${overallGrandTotalSqf.toFixed(3)} SQF`, 297, grandY + 22, { align: "center" });
+  }
 
   const fileName = `Measurement_${sheet.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
   doc.save(fileName);

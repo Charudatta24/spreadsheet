@@ -493,18 +493,35 @@ export async function getUserProfile(uid: string): Promise<{
   displayName?: string;
   email?: string | null;
   nickname?: string;
+  factoryName?: string;
   accountType?: import("@/types").AccountType;
   workType?: import("@/types").WorkType;
 } | null> {
-  const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
-  if (!snap.exists()) return null;
-  return snap.data() as {
-    displayName?: string;
-    email?: string | null;
-    nickname?: string;
-    accountType?: import("@/types").AccountType;
-    workType?: import("@/types").WorkType;
-  };
+  let localData: any = null;
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem(`collabsheet_profile_${uid}`);
+      if (raw) localData = JSON.parse(raw);
+    } catch (_) {}
+  }
+
+  try {
+    const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
+    if (snap.exists()) {
+      const remoteData = snap.data() as any;
+      const merged = { ...localData, ...remoteData };
+      if (typeof localStorage !== "undefined") {
+        try {
+          localStorage.setItem(`collabsheet_profile_${uid}`, JSON.stringify(merged));
+        } catch (_) {}
+      }
+      return merged;
+    }
+  } catch (e) {
+    console.error("Error fetching user profile from Firestore:", e);
+  }
+
+  return localData;
 }
 
 export async function setUserProfile(
@@ -513,6 +530,7 @@ export async function setUserProfile(
     displayName?: string;
     email?: string | null;
     nickname?: string;
+    factoryName?: string;
     accountType?: import("@/types").AccountType;
     workType?: import("@/types").WorkType;
   }
@@ -521,8 +539,18 @@ export async function setUserProfile(
   if (profile.displayName !== undefined) data.displayName = profile.displayName;
   if (profile.email !== undefined) data.email = profile.email;
   if (profile.nickname !== undefined) data.nickname = profile.nickname;
+  if (profile.factoryName !== undefined) data.factoryName = profile.factoryName;
   if (profile.accountType !== undefined) data.accountType = profile.accountType;
   if (profile.workType !== undefined) data.workType = profile.workType;
+
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem(`collabsheet_profile_${uid}`);
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem(`collabsheet_profile_${uid}`, JSON.stringify({ ...existing, ...data }));
+    } catch (_) {}
+  }
+
   await setDoc(doc(db, USERS_COLLECTION, uid), data, { merge: true });
 }
 

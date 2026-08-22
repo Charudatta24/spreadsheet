@@ -422,6 +422,7 @@ function MeasurementDashboardContent() {
     const docData: any = {
       userId: user.uid,
       creatorName: user.displayName || user.email || "Unknown",
+      factoryName: user.factoryName || "",
       title: `${titleName} Measurements`,
       date: formDate,
       dateISO,

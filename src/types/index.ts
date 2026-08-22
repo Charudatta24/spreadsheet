@@ -170,6 +170,8 @@ export type AppUser = {
   isAnonymous: boolean;
   /** Optional nickname set by user after Google sign-in, persisted in Firestore */
   nickname?: string;
+  /** Optional Factory Name set by user, persisted in Firestore */
+  factoryName?: string;
   /** True if the user needs to provide their name for the first time */
   requiresName?: boolean;
   /** Account type: owner or non-owner */
@@ -177,6 +179,7 @@ export type AppUser = {
   /** Work type for non-owners: cutting or polish */
   workType?: WorkType;
   requiresWorkType?: boolean;
+  requiresFactoryName?: boolean;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────
@@ -275,6 +278,7 @@ export type MeasurementSheet = {
   locationType: LocationType;
   sheetType: SheetType;
   numSlabs?: number;
+  factoryName?: string;
   people: PersonMeasurement[];
   invitedWorkers?: { userId: string; name: string; status?: "pending" | "accepted" | "declined"; permissions?: WorkerPermissions }[];
   participantIds?: string[];

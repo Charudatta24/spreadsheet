@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-    ArrowLeft, Mail, AtSign, Calendar,
+    ArrowLeft, Mail, AtSign, Calendar, Building2,
     Pencil, Check, X, Loader2, UserCircle,
     Trash2, RotateCcw, AlertTriangle, Clock, Ruler, ShieldAlert,
 } from "lucide-react";
@@ -381,6 +381,42 @@ function AccountPageContent() {
 
     function handleCancel() { setValue(nickname); setEditing(false); setError(""); }
 
+    const [editingFactory, setEditingFactory] = useState(false);
+    const [factoryValue, setFactoryValue] = useState(user?.factoryName || "");
+    const [savingFactory, setSavingFactory] = useState(false);
+    const [factoryError, setFactoryError] = useState("");
+
+    useEffect(() => {
+        if (user?.factoryName) {
+            setFactoryValue(user.factoryName);
+        }
+    }, [user?.factoryName]);
+
+    async function handleSaveFactory() {
+        const trimmed = factoryValue.trim();
+        if (!trimmed || !user) { setEditingFactory(false); return; }
+
+        setSavingFactory(true);
+        setFactoryError("");
+        try {
+            await setUserProfile(user.uid, {
+                factoryName: trimmed,
+            });
+            setUser({ ...user, factoryName: trimmed });
+            setEditingFactory(false);
+        } catch {
+            setFactoryError("Failed to update Factory Name.");
+        } finally {
+            setSavingFactory(false);
+        }
+    }
+
+    function handleCancelFactory() {
+        setFactoryValue(user?.factoryName || "");
+        setEditingFactory(false);
+        setFactoryError("");
+    }
+
     // Delete account: cascade-delete all owned data then delete Auth account
     async function handleDeleteAccount() {
         if (!user || !auth.currentUser) return;
@@ -584,6 +620,72 @@ function AccountPageContent() {
                             ) : (
                                 <p className="text-xs text-sheet-muted">
                                     Nicknames are visible to collaborators in spreadsheets and chats. Max 32 characters.
+                                </p>
+                            )}
+                        </div>
+                        {/* Factory Name Edit Card */}
+                        <div className="bg-white rounded-2xl border border-sheet-border px-5 py-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                        <Building2 size={16} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[11px] uppercase tracking-widest font-bold text-sheet-muted mb-0.5">Factory Name</p>
+                                        {!editingFactory ? (
+                                            <p className="text-sm font-semibold text-sheet-text truncate">{user.factoryName || "Not set"}</p>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={factoryValue}
+                                                onChange={(e) => setFactoryValue(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") handleSaveFactory();
+                                                    if (e.key === "Escape") handleCancelFactory();
+                                                }}
+                                                placeholder="Enter Factory Name (e.g. Valley Stone)"
+                                                className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-indigo-500 transition-colors"
+                                                autoFocus
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {!editingFactory ? (
+                                        <button
+                                            onClick={() => setEditingFactory(true)}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-sheet-border px-3 py-2 text-xs font-semibold text-sheet-text hover:bg-sheet-bg transition-colors"
+                                        >
+                                            <Pencil size={14} />
+                                            Edit
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={handleSaveFactory}
+                                                disabled={savingFactory}
+                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                            >
+                                                <Check size={14} />
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={handleCancelFactory}
+                                                disabled={savingFactory}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-sheet-border px-3 py-2 text-xs font-semibold text-sheet-text hover:bg-sheet-bg transition-colors"
+                                            >
+                                                <X size={14} />
+                                                Cancel
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            {factoryError ? (
+                                <p className="text-xs text-red-500">{factoryError}</p>
+                            ) : (
+                                <p className="text-xs text-sheet-muted">
+                                    Factory Name will be displayed at the top of generated PDFs and measurement reports.
                                 </p>
                             )}
                         </div>

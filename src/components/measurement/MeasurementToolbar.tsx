@@ -22,6 +22,7 @@ import {
 import type { MeasurementSheet, SaveState, WorkerPermissions } from "@/types";
 import { exportMeasurementToExcel, exportMeasurementToCSV, exportMeasurementToPDF, calculateSheetTotal } from "@/lib/measurementExport";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
+import { useAuthStore } from "@/lib/sync/authStore";
 
 interface MeasurementToolbarProps {
   sheet: MeasurementSheet;
@@ -59,6 +60,7 @@ export function MeasurementToolbar({
   canUndo,
   canRedo,
 }: MeasurementToolbarProps) {
+  const user = useAuthStore((s) => s.user);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(sheet.title);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -250,7 +252,7 @@ export function MeasurementToolbar({
 
           {/* PDF Export */}
           <button
-            onClick={() => exportMeasurementToPDF(sheet)}
+            onClick={() => exportMeasurementToPDF(sheet, user?.factoryName)}
             className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
             title="Download as PDF"
           >
