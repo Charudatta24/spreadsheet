@@ -1,6 +1,7 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --sheet-bg: #f8f9fa;
@@ -8,8 +9,8 @@
   --sheet-border: #e2e4e9;
   --sheet-accent: #1a73e8;
   --sheet-accent-dim: #1557b0;
-  --sheet-text: #1a1a1a;
-  --sheet-muted: #6b7280;
+  --sheet-text: #0f172a;
+  --sheet-muted: #64748b;
   --sheet-header: #f1f3f4;
   --sheet-cell: #ffffff;
   --sheet-cell-hover: #f8f9fa;
@@ -31,6 +32,7 @@ html {
   min-height: 100%;
   background: var(--sheet-bg);
   color: var(--sheet-text);
+  font-family: 'Inter', sans-serif;
 }
 
 body {
@@ -40,7 +42,35 @@ body {
   overflow-y: auto;
   background: var(--sheet-bg);
   color: var(--sheet-text);
+  font-family: 'Inter', sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Headings and Titles matching the Loading Animation Font (Rajdhani) */
+h1, h2, h3, h4, h5, h6,
+.font-heading,
+.brand-font,
+.app-title,
+.modal-title,
+.badge-font,
+.btn-brand,
+.card-header-title {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Brand Colors Matching Loading Animation */
+.text-brand-slate { color: #0f172a; }
+.text-brand-blue { color: var(--sheet-accent); }
+.bg-brand-slate { background-color: #0f172a; }
+.bg-brand-blue { background-color: var(--sheet-accent); }
+
+/* ── Primary Action Buttons — Rajdhani Bold ── */
+button,
+.btn {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  letter-spacing: 0.03em;
 }
 
 /* ── Scrollbars ── */
@@ -285,14 +315,52 @@ body {
 .saving-pulse {
   animation: saving-pulse 1s ease-in-out infinite;
 }
-@keyframes grid-pulse {
-  0%, 100% {
-    opacity: 0.2;
-    transform: scale(1);
+
+/* ── SK Folding Cube — primary loading animation ── */
+.sk-folding-cube {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  transform: rotateZ(45deg);
+}
+
+.sk-folding-cube .sk-cube {
+  float: left;
+  width: 50%;
+  height: 50%;
+  position: relative;
+  transform: scale(1.1);
+}
+
+.sk-folding-cube .sk-cube:before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: var(--sheet-accent);
+  animation: sk-foldCubeAngle 2.4s infinite linear both;
+  transform-origin: 100% 100%;
+}
+
+.sk-folding-cube .sk-cube2 { transform: scale(1.1) rotateZ(90deg); }
+.sk-folding-cube .sk-cube3 { transform: scale(1.1) rotateZ(180deg); }
+.sk-folding-cube .sk-cube4 { transform: scale(1.1) rotateZ(270deg); }
+.sk-folding-cube .sk-cube2:before { animation-delay: 0.3s; }
+.sk-folding-cube .sk-cube3:before { animation-delay: 0.6s; }
+.sk-folding-cube .sk-cube4:before { animation-delay: 0.9s; }
+
+@keyframes sk-foldCubeAngle {
+  0%, 10% {
+    transform: perspective(140px) rotateX(-180deg);
+    opacity: 0;
   }
-  50% {
+  25%, 75% {
+    transform: perspective(140px) rotateX(0deg);
     opacity: 1;
-    transform: scale(1.1);
+  }
+  90%, 100% {
+    transform: perspective(140px) rotateY(180deg);
+    opacity: 0;
   }
 }
 
@@ -312,18 +380,12 @@ body {
 }
 
 @keyframes reveal-content {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .grid-mesh {
-  background-image: 
+  background-image:
     linear-gradient(rgba(var(--sheet-accent-rgb), 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(var(--sheet-accent-rgb), 0.04) 1px, transparent 1px);
   background-size: 60px 60px;
@@ -334,5 +396,130 @@ body {
 
 @keyframes grid-scroll {
   from { background-position: 0 0; }
-  to { background-position: 60px 60px; }
+  to   { background-position: 60px 60px; }
+}
+
+/* ── Splash Intro Screen ── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--sheet-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Total duration: 4.0s total (fade out starts at 3.3s, lasts 0.7s → 4.0s) */
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: splash-fade-out 0.7s ease-out 3.3s both;
+}
+
+/* Title row for initial zoom-in splash */
+.splash-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  line-height: 1;
+}
+
+/* Each word in initial zoom-in splash (1.6s per word) */
+.splash-word {
+  font-family: 'Rajdhani', 'Arial Black', sans-serif;
+  font-size: clamp(2.4rem, 9vw, 4.8rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: inline-block;
+  animation: word-zoom-in 1.6s cubic-bezier(0, 0.9, 0.57, 1) both;
+}
+
+/* "MEASURE" — dark slate */
+.splash-word-1 {
+  color: #0f172a;
+  animation-delay: 0s;
+}
+
+/* "SHEETS" — app accent blue */
+.splash-word-2 {
+  color: var(--sheet-accent);
+  animation-delay: 1.6s;
+}
+
+/* ── Static Words for Loading / Reload Screens (No zoom/scale animation) ── */
+.splash-word-static-1 {
+  font-family: 'Rajdhani', 'Arial Black', sans-serif;
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #0f172a;
+  display: inline-block;
+  user-select: none;
+}
+
+.splash-word-static-2 {
+  font-family: 'Rajdhani', 'Arial Black', sans-serif;
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sheet-accent);
+  display: inline-block;
+  user-select: none;
+}
+
+/* Tagline below */
+.splash-tagline {
+  font-family: 'Rajdhani', 'Arial', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  color: var(--sheet-muted);
+  text-transform: uppercase;
+  animation: tagline-appear 0.6s ease-out 2.4s both;
+}
+
+/* Horizontal rule that expands after both words appear */
+.splash-ruler-line {
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0f172a 40%, var(--sheet-accent) 60%, transparent);
+  animation: ruler-expand 0.6s ease-out 2.3s both;
+}
+
+@keyframes word-zoom-in {
+  0%   { transform: scale(10); opacity: 0; }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+@keyframes tagline-appear {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ruler-expand {
+  from { width: 0;     opacity: 0; }
+  to   { width: 220px; opacity: 0.6; }
+}
+
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; pointer-events: none; }
+}
+
+/* ── Login Screen Branding Header ── */
+.login-title-brand {
+  font-family: 'Rajdhani', 'Arial Black', sans-serif;
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
 }

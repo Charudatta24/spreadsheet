@@ -286,7 +286,7 @@ export default function CuttingSheetPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleExportExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
             title="Export Cutting Sheet to Excel"
           >
             <Download size={14} />
@@ -300,7 +300,7 @@ export default function CuttingSheetPage() {
             {saving ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : saveSuccess ? (
-              <CheckCircle2 size={14} className="text-emerald-300" />
+              <CheckCircle2 size={14} className="text-blue-300" />
             ) : (
               <Save size={14} />
             )}
@@ -420,7 +420,7 @@ export default function CuttingSheetPage() {
                       {machine.assignedRows.length} item{machine.assignedRows.length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="font-mono text-emerald-400 font-bold text-xs sm:text-sm">
+                  <div className="font-mono text-blue-400 font-bold text-xs sm:text-sm">
                     TOTAL AREA: {totalMachineArea}
                   </div>
                 </div>
@@ -438,7 +438,7 @@ export default function CuttingSheetPage() {
                           <th className="px-3 py-2 text-center w-12">S.No.</th>
                           <th className="px-3 py-2 text-right">Length</th>
                           <th className="px-3 py-2 text-right">Height</th>
-                          <th className="px-3 py-2 text-right text-emerald-700 bg-emerald-50/50">Calculated</th>
+                          <th className="px-3 py-2 text-right text-blue-700 bg-blue-50/50">Calculated</th>
                           <th className="px-3 py-2 text-left">Assigned Polish</th>
                           <th className="px-3 py-2 text-right">Cut Length</th>
                           <th className="px-3 py-2 text-right">Cut Height</th>
@@ -465,7 +465,7 @@ export default function CuttingSheetPage() {
                             </td>
 
                             {/* Calculated */}
-                            <td className="px-3 py-2.5 text-right font-mono font-bold text-emerald-700 bg-emerald-50/30">
+                            <td className="px-3 py-2.5 text-right font-mono font-bold text-blue-700 bg-blue-50/30">
                               {item.calculated}
                             </td>
 

@@ -257,7 +257,7 @@ export default function MeasurementSheetEditorPage() {
         {/* Person Header Banner */}
         <div className="mb-3 flex items-center justify-between bg-sheet-surface px-3 py-2.5 sm:p-4 rounded-xl border border-sheet-border shadow-sm">
           <h2 className="text-xs sm:text-sm font-bold text-sheet-text flex items-center gap-2 truncate">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
             <span className="truncate">
               {sheet.sheetCategory === "cutting"
                 ? `Machine: ${currentPerson?.name}`
@@ -273,7 +273,7 @@ export default function MeasurementSheetEditorPage() {
                 {sheet.date}
               </span>
             )}
-            <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-200">
               {sheet.locationType}
             </span>
             <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">

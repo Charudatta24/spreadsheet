@@ -10,37 +10,44 @@ interface LoadingGridProps {
 }
 
 export function LoadingGrid({ size = "md", className = "", label, fullPage }: LoadingGridProps) {
-  const dimensions = {
-    sm: { gap: 2, box: 6, container: 24 },
-    md: { gap: 3, box: 8, container: 32 },
-    lg: { gap: 4, box: 12, container: 48 },
-  }[size];
-
-  const content = (
-    <div className={`flex flex-col items-center justify-center gap-4 ${className}`}>
-      <div 
-        className="grid grid-cols-3" 
-        style={{ 
-          gap: `${dimensions.gap}px`,
-          width: `${dimensions.container}px`,
-          height: `${dimensions.container}px`
-        }}
-      >
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-sheet-accent rounded-[1.5px] shadow-sm"
-            style={{
-              width: `${dimensions.box}px`,
-              height: `${dimensions.box}px`,
-              animation: `grid-pulse 1.4s infinite ease-in-out`,
-              animationDelay: `${(i % 3 + Math.floor(i / 3)) * 0.15}s`,
-              opacity: 0.2
-            }}
-          />
-        ))}
+  // Small inline spinner mode (e.g. inside buttons / small cards)
+  if (size === "sm" && !fullPage) {
+    return (
+      <div className={`flex items-center justify-center ${className}`}>
+        <div className="sk-folding-cube !w-5 !h-5">
+          <div className="sk-cube1 sk-cube" />
+          <div className="sk-cube2 sk-cube" />
+          <div className="sk-cube4 sk-cube" />
+          <div className="sk-cube3 sk-cube" />
+        </div>
       </div>
-      {label && <span className="text-sm font-semibold text-sheet-accent/70 tracking-tight animate-pulse">{label}</span>}
+    );
+  }
+
+  // Page reload / network loading state:
+  // Static "Measure" [sk-folding-cube] "Sheets"
+  const content = (
+    <div className={`flex flex-col items-center justify-center gap-5 ${className}`}>
+      <div className="splash-title-wrapper">
+        <span className="splash-word-static-1">Measure</span>
+
+        <div className="mx-2 sm:mx-3 flex items-center justify-center">
+          <div className="sk-folding-cube">
+            <div className="sk-cube1 sk-cube" />
+            <div className="sk-cube2 sk-cube" />
+            <div className="sk-cube4 sk-cube" />
+            <div className="sk-cube3 sk-cube" />
+          </div>
+        </div>
+
+        <span className="splash-word-static-2">Sheets</span>
+      </div>
+
+      {label && (
+        <span className="text-xs font-semibold text-sheet-accent/70 tracking-widest uppercase animate-pulse">
+          {label}
+        </span>
+      )}
     </div>
   );
 

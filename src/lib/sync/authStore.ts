@@ -27,7 +27,18 @@ export const useAuthStore = create<AuthState>()(
       requiresAccountType: false,
       requiresWorkType: false,
       requiresFactoryName: false,
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        if (typeof window !== "undefined") {
+          try {
+            if (user) {
+              localStorage.setItem("collabsheet_is_logged_in", "true");
+            } else {
+              localStorage.removeItem("collabsheet_is_logged_in");
+            }
+          } catch (_) {}
+        }
+        set({ user });
+      },
       setInitialized: (initialized) => set({ initialized }),
       setRequiresName: (requiresName) => set({ requiresName }),
       setRequiresAccountType: (requiresAccountType) => set({ requiresAccountType }),

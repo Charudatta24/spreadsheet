@@ -331,7 +331,7 @@ export function MeasurementGrid({
                 <th
                   key={c.key}
                   className={`px-2 sm:px-3 py-2 ${c.isRemark ? "text-left" : "text-right"} font-bold border-r border-sheet-border text-[10px] sm:text-xs ${
-                    c.isCalc ? "text-emerald-600 bg-emerald-50/40" : ""
+                    c.isCalc ? "text-blue-600 bg-blue-50/40" : ""
                   }`}
                 >
                   {c.label}
@@ -406,7 +406,7 @@ export function MeasurementGrid({
                               setRemarkInput(row.remark || "");
                             }
                           }}
-                          className="px-2 py-1 border-r border-b border-sheet-border cursor-pointer hover:bg-emerald-50/30 text-xs font-mono truncate max-w-[120px] sm:max-w-[180px] text-slate-700"
+                          className="px-2 py-1 border-r border-b border-sheet-border cursor-pointer hover:bg-blue-50/30 text-xs font-mono truncate max-w-[120px] sm:max-w-[180px] text-slate-700"
                           title={row.remark ? row.remark : canEditRemarks ? "Tap to add remark" : ""}
                         >
                           {row.remark ? (
@@ -470,11 +470,11 @@ export function MeasurementGrid({
               >
                 TOTAL SQF =
               </td>
-              <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
+              <td className="px-2 sm:px-3 py-2 text-right font-bold text-blue-700 border-r border-sheet-border text-[11px] sm:text-xs">
                 {(Math.trunc(totalVal * 100) / 100).toFixed(2)}
               </td>
               {showNationalCmCalc && (
-                <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
+                <td className="px-2 sm:px-3 py-2 text-right font-bold text-blue-700 border-r border-sheet-border text-[11px] sm:text-xs">
                   {(Math.trunc(cmTotalVal * 100) / 100).toFixed(2)}
                 </td>
               )}
@@ -490,7 +490,7 @@ export function MeasurementGrid({
         <div className="p-2 sm:p-3 bg-slate-50 border-t border-sheet-border flex items-center justify-start gap-2">
           <button
             onClick={addRow}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
           >
             <Plus size={14} />
             Add Row
@@ -504,7 +504,7 @@ export function MeasurementGrid({
           <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-base text-sheet-text flex items-center gap-2">
-                <MessageSquare size={16} className="text-emerald-600" />
+                <MessageSquare size={16} className="text-blue-600" />
                 Add Remark
               </h3>
               <button
@@ -522,7 +522,7 @@ export function MeasurementGrid({
               onKeyDown={(e) => e.key === "Enter" && saveRemark()}
               placeholder="e.g. Wall measurement - Room 2"
               autoFocus
-              className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/40"
             />
 
             <div className="flex justify-end gap-2 pt-2">
@@ -534,7 +534,7 @@ export function MeasurementGrid({
               </button>
               <button
                 onClick={saveRemark}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm flex items-center gap-1"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm flex items-center gap-1"
               >
                 <Check size={14} />
                 Save Remark

@@ -893,9 +893,10 @@ function MeasurementDashboardContent() {
 
         <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-10">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-sheet-text flex items-center justify-center gap-2 mb-2">
-              <Ruler className="text-emerald-600" size={28} />
-              Measurement Sheets
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 mb-2 font-['Rajdhani']">
+              <Ruler className="text-blue-600" size={28} />
+              <span className="text-slate-900">Measurement</span>
+              <span className="text-blue-600">Sheets</span>
             </h1>
           </div>
 
@@ -908,7 +909,7 @@ function MeasurementDashboardContent() {
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users size={32} />
                 </div>
-                <span className="text-xl font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Customer</span> <span className="text-blue-600">Sheet</span></span>
                 <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Customer Section</span>
                   <ArrowRight size={16} />
@@ -924,7 +925,7 @@ function MeasurementDashboardContent() {
                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <User size={32} />
                 </div>
-                <span className="text-xl font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Polish</span> <span className="text-blue-600">Sheet</span></span>
                 <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Polish Section</span>
                   <ArrowRight size={16} />
@@ -940,7 +941,7 @@ function MeasurementDashboardContent() {
                 <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Ruler size={32} />
                 </div>
-                <span className="text-xl font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Cutting</span> <span className="text-blue-600">Sheet</span></span>
                 <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Cutting Section</span>
                   <ArrowRight size={16} />
@@ -1013,9 +1014,10 @@ function MeasurementDashboardContent() {
         {/* Title Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-sheet-text flex items-center gap-2">
-              <Ruler className="text-emerald-600" size={20} />
-              {sectionTitle}
+            <h1 className="text-lg sm:text-2xl font-extrabold tracking-wide uppercase text-slate-900 flex items-center gap-2 font-['Rajdhani']">
+              <Ruler className="text-blue-600" size={22} />
+              <span className="text-slate-900">{sectionLabel}</span>
+              <span className="text-blue-600">Measurement Sheets</span>
             </h1>
           </div>
         </div>

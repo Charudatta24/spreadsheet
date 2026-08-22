@@ -47,7 +47,7 @@ export default function AppHub() {
       <div className="grid-mesh fixed inset-0 pointer-events-none z-0" />
       <header className="sticky top-0 z-30 h-16 border-b border-sheet-border bg-sheet-bg/90 backdrop-blur-md flex items-center px-6 justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-bold tracking-tight text-sheet-text text-lg">Hub</span>
+          <span className="font-extrabold tracking-wide uppercase text-lg font-['Rajdhani']"><span className="text-slate-900">App</span> <span className="text-blue-600">Hub</span></span>
         </div>
         <div className="relative flex items-center gap-2" ref={dropdownRef}>
           <div className="w-8 h-8 rounded-full bg-sheet-accent/15 border border-sheet-border text-sheet-accent text-[11px] font-bold flex items-center justify-center">
@@ -108,7 +108,9 @@ export default function AppHub() {
       </header>
       <main className="relative z-10 pt-16 pb-16 px-6 max-w-6xl mx-auto">
         <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold mb-3 tracking-tight text-sheet-text">Choose your workspace</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide uppercase font-['Rajdhani'] mb-3">
+            <span className="text-slate-900">Choose Your</span> <span className="text-blue-600">Workspace</span>
+          </h1>
         </div>
         <div className={`grid grid-cols-1 ${user?.accountType === "non-owner" ? "max-w-md mx-auto" : "md:grid-cols-3"} gap-6`}>
           {user?.accountType !== "non-owner" && (
@@ -118,7 +120,7 @@ export default function AppHub() {
                 <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><FileSpreadsheet size={120} /></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><FileSpreadsheet size={28} /></div>
-                  <h2 className="text-xl font-bold mb-2 text-sheet-text">Spreadsheets</h2>
+                  <h2 className="text-xl font-extrabold uppercase tracking-wide font-heading font-sans"><span className="text-slate-900">Spread</span><span className="text-blue-600">sheets</span></h2>
                 </div>
                 <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Enter Workspace</span><ArrowRight size={16} /></div>
               </Link>
@@ -127,7 +129,7 @@ export default function AppHub() {
                 <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><MessageSquare size={120} /></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-xl bg-sheet-accent/10 text-sheet-accent flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><MessageSquare size={28} /></div>
-                  <h2 className="text-xl font-bold mb-2 text-sheet-text">Chatbox</h2>
+                  <h2 className="text-xl font-extrabold uppercase tracking-wide font-heading font-sans"><span className="text-slate-900">Chat</span><span className="text-blue-600">box</span></h2>
                 </div>
                 <div className="flex items-center gap-2 text-sheet-accent font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Chat</span><ArrowRight size={16} /></div>
               </Link>
@@ -146,12 +148,14 @@ export default function AppHub() {
             <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><Ruler size={120} className="text-emerald-600" /></div>
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><Ruler size={28} /></div>
-              <h2 className="text-xl font-bold mb-2 text-sheet-text">
-                {user?.accountType === "non-owner" && user?.workType === "cutting"
-                  ? "Cutting Sheets"
-                  : user?.accountType === "non-owner" && user?.workType === "polish"
-                  ? "Polish Sheets"
-                  : "Measurement Sheets"}
+              <h2 className="text-xl font-extrabold uppercase tracking-wide font-heading font-sans">
+                {user?.accountType === "non-owner" && user?.workType === "cutting" ? (
+                  <><span className="text-slate-900">Cutting</span> <span className="text-blue-600">Sheets</span></>
+                ) : user?.accountType === "non-owner" && user?.workType === "polish" ? (
+                  <><span className="text-slate-900">Polish</span> <span className="text-blue-600">Sheets</span></>
+                ) : (
+                  <><span className="text-slate-900">Measurement</span> <span className="text-blue-600">Sheets</span></>
+                )}
               </h2>
             </div>
             <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Workspace</span><ArrowRight size={16} /></div>
@@ -164,9 +168,10 @@ export default function AppHub() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between border-b border-sheet-border pb-3">
-              <h2 className="text-lg font-bold text-sheet-text flex items-center gap-2">
-                <Ruler size={20} className="text-emerald-600" />
-                Measurement Sheets
+              <h2 className="text-lg font-extrabold uppercase tracking-wide font-heading font-sans flex items-center gap-2">
+                <Ruler size={20} className="text-blue-600" />
+                <span className="text-slate-900">Measurement</span>
+                <span className="text-blue-600">Sheets</span>
               </h2>
               <button onClick={() => setShowMeasurementChoice(false)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
                 <X size={18} />
@@ -183,7 +188,7 @@ export default function AppHub() {
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Users size={24} />
                   </div>
-                  <span className="text-sm font-bold text-sheet-text group-hover:text-blue-600">Customer</span>
+                  <span className="text-sm font-extrabold uppercase tracking-wide font-heading font-sans"><span className="text-slate-900">Customer</span> <span className="text-blue-600">Sheet</span></span>
                 </button>
               )}
 
@@ -195,7 +200,7 @@ export default function AppHub() {
                   <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <User size={24} />
                   </div>
-                  <span className="text-sm font-bold text-sheet-text group-hover:text-emerald-600">Polish</span>
+                  <span className="text-sm font-extrabold uppercase tracking-wide font-heading font-sans"><span className="text-slate-900">Polish</span> <span className="text-blue-600">Sheet</span></span>
                 </button>
               )}
 
@@ -207,7 +212,7 @@ export default function AppHub() {
                   <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Ruler size={24} />
                   </div>
-                  <span className="text-sm font-bold text-sheet-text group-hover:text-indigo-600">Cutting</span>
+                  <span className="text-sm font-extrabold uppercase tracking-wide font-heading font-sans"><span className="text-slate-900">Cutting</span> <span className="text-blue-600">Sheet</span></span>
                 </button>
               )}
             </div>

@@ -171,7 +171,7 @@ export function MeasurementToolbar({
               isOwner
                 ? "bg-purple-50 text-purple-700 border border-purple-200"
                 : currentUserPermissions?.canModifyMeasurements
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                ? "bg-blue-50 text-blue-700 border border-blue-200"
                 : "bg-amber-50 text-amber-700 border border-amber-200"
             }`}
           >
@@ -202,7 +202,7 @@ export function MeasurementToolbar({
               </>
             ) : saveState === "saving" || saveState === "pending" ? (
               <>
-                <RefreshCw size={11} className="text-emerald-500 animate-spin" />
+                <RefreshCw size={11} className="text-blue-500 animate-spin" />
                 <span className="hidden sm:inline">Saving...</span>
               </>
             ) : saveState === "error" ? (
@@ -212,7 +212,7 @@ export function MeasurementToolbar({
               </>
             ) : (
               <>
-                <CheckCircle2 size={12} className="text-emerald-500" />
+                <CheckCircle2 size={12} className="text-blue-500" />
                 <span className="hidden sm:inline text-slate-600">Saved</span>
               </>
             )}
@@ -243,7 +243,7 @@ export function MeasurementToolbar({
           {/* Excel Export */}
           <button
             onClick={() => exportMeasurementToExcel(sheet)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
             title="Download as Excel (.xlsx)"
           >
             <Download size={13} />

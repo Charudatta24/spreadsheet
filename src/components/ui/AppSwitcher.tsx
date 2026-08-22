@@ -26,6 +26,7 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
     {
       id: "spreadsheets",
       name: "Spreadsheets",
+      label: <><span className="text-slate-900 font-extrabold uppercase font-heading font-sans">Spread</span><span className="text-blue-600 font-extrabold uppercase font-heading font-sans">sheets</span></>,
       href: "/dashboard",
       icon: FileSpreadsheet,
       color: "text-sheet-accent",
@@ -35,6 +36,7 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
     {
       id: "chatbox",
       name: "Chatbox",
+      label: <><span className="text-slate-900 font-extrabold uppercase font-heading font-sans">Chat</span><span className="text-blue-600 font-extrabold uppercase font-heading font-sans">box</span></>,
       href: "/chatbox",
       icon: MessageSquare,
       color: "text-sheet-accent-dim",
@@ -44,6 +46,7 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
     {
       id: "measurement-sheets",
       name: "Measurement Sheets",
+      label: <><span className="text-slate-900 font-extrabold uppercase font-heading font-sans">Measurement</span> <span className="text-blue-600 font-extrabold uppercase font-heading font-sans">Sheets</span></>,
       href: "/measurement-sheets",
       icon: Ruler,
       color: "text-emerald-600",
@@ -95,8 +98,8 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
                     <app.icon size={20} />
                   </div>
                   <div className="flex flex-col">
-                    <span className={`text-sm font-semibold ${app.id === currentApp ? "text-sheet-accent" : "text-sheet-text"}`}>
-                      {app.name}
+                    <span className="text-sm font-bold">
+                      {app.label}
                     </span>
                     {app.isComingSoon && (
                       <span className="text-[10px] text-sheet-accent-dim italic">Coming Soon</span>

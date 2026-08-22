@@ -186,10 +186,14 @@ export function LoginScreen() {
 
       <div className="flex items-center justify-center h-screen bg-sheet-bg">
         <div className="w-full max-w-sm mx-4">
-          {/* Logo */}
-            <div className="inline-flex items-center gap-3 mb-3">
-              <span className="text-2xl font-black text-sheet-text tracking-tight">
-                MeasureSheets
+            {/* Logo */}
+            <div className="flex flex-col items-center justify-center gap-1 mb-6 text-center">
+              <div className="login-title-brand flex items-center justify-center gap-1.5">
+                <span className="text-slate-900">Measure</span>
+                <span className="text-blue-600">Sheets</span>
+              </div>
+              <span className="text-[11px] font-semibold tracking-widest text-slate-400 uppercase font-['Rajdhani']">
+                Precision in Every Measurement
               </span>
             </div>
 

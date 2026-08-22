@@ -208,11 +208,11 @@ function MeasurementCellComponent({
         isSno
           ? "bg-slate-50/60 text-slate-400 font-medium text-[11px]"
           : isCalculated
-          ? "bg-slate-100/70 dark:bg-slate-800/40 text-emerald-600 font-bold cursor-not-allowed"
+          ? "bg-slate-100/70 dark:bg-slate-800/40 text-blue-600 font-bold cursor-not-allowed"
           : "bg-sheet-cell hover:bg-sheet-cell-hover cursor-text text-sheet-text"
       } ${
         isActive
-          ? "ring-2 ring-emerald-500 z-10 bg-emerald-50/50"
+          ? "ring-2 ring-blue-500 z-10 bg-blue-50/50"
           : ""
       }`}
       title={requireLongPressToEdit ? "Long press to edit S.No" : undefined}
@@ -236,7 +236,7 @@ function MeasurementCellComponent({
               handleKeyDown(e);
             }
           }}
-          className="absolute inset-0 w-full h-full px-3 text-right bg-white border-2 border-emerald-500 outline-none text-xs font-mono text-sheet-text z-20 shadow-lg"
+          className="absolute inset-0 w-full h-full px-3 text-right bg-white border-2 border-blue-500 outline-none text-xs font-mono text-sheet-text z-20 shadow-lg"
         />
       ) : (
         <span className="truncate">{displayVal}</span>
