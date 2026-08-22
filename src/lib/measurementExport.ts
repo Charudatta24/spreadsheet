@@ -123,6 +123,15 @@ export function calculateSheetTotal(sheet: MeasurementSheet): number {
   return total;
 }
 
+/**
+ * Truncate (NOT round) a number to exactly 2 decimal places, then format.
+ * e.g. 43.45556 → "43.45"  (not "43.46")
+ */
+export function fmt2(n: number): string {
+  const truncated = Math.trunc(n * 100) / 100;
+  return truncated.toFixed(2);
+}
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -156,11 +165,11 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
           r.A ?? "-",
           r.B ?? "-",
           r.C ?? "-",
-          calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+          calcVal > 0 ? parseFloat(fmt2(calcVal)) : "-",
         ]);
       });
       const pTotal = calculateCuttingPersonTotal(person.rows);
-      sheetData.push(["", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2))]);
+      sheetData.push(["", "", "", "Total SQF:", parseFloat(fmt2(pTotal))]);
     } else if (sheet.locationType === "local") {
       sheetData.push(["S.No.", "Length", "Height", "SQF", "Remark"]);
       nonEmptyRows.forEach((r, i) => {
@@ -169,12 +178,12 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
           r.serialNumber ?? (i + 1),
           r.A ?? "-",
           r.B ?? "-",
-          calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+          calcVal > 0 ? parseFloat(fmt2(calcVal)) : "-",
           r.remark || "-",
         ]);
       });
       const pTotal = calculatePersonTotal("local", person.rows);
-      sheetData.push(["", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), ""]);
+      sheetData.push(["", "", "Total SQF:", parseFloat(fmt2(pTotal)), ""]);
     } else {
       const isCustomerNational = sheet.personType === "customer";
       if (isCustomerNational) {
@@ -197,14 +206,14 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
             r.B ?? "-",
             r.C ?? "-",
             r.D ?? "-",
-            calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
-            calcCmVal > 0 ? parseFloat(calcCmVal.toFixed(2)) : "-",
+            calcVal > 0 ? parseFloat(fmt2(calcVal)) : "-",
+            calcCmVal > 0 ? parseFloat(fmt2(calcCmVal)) : "-",
             r.remark || "-",
           ]);
         });
         const pTotal = calculatePersonTotal("national", person.rows);
         const pCmTotal = calculatePersonCmTotal(person.rows);
-        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), parseFloat(pCmTotal.toFixed(2)), ""]);
+        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(fmt2(pTotal)), parseFloat(fmt2(pCmTotal)), ""]);
       } else {
         sheetData.push(["S.No.", "Length", "Length (CM)", "Height", "Height (CM)", "SQF", "Remark"]);
         nonEmptyRows.forEach((r, i) => {
@@ -215,12 +224,12 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
             r.B ?? "-",
             r.C ?? "-",
             r.D ?? "-",
-            calcVal > 0 ? parseFloat(calcVal.toFixed(2)) : "-",
+            calcVal > 0 ? parseFloat(fmt2(calcVal)) : "-",
             r.remark || "-",
           ]);
         });
         const pTotal = calculatePersonTotal("national", person.rows);
-        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(pTotal.toFixed(2)), ""]);
+        sheetData.push(["", "", "", "", "Total SQF:", parseFloat(fmt2(pTotal)), ""]);
       }
     }
 
@@ -382,7 +391,7 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
               r.C ?? "-",
               r.D ?? "-",
               slabs,
-              calcVal > 0 ? calcVal.toFixed(2) : "-",
+              calcVal > 0 ? fmt2(calcVal) : "-",
             ]);
           });
         } else {
@@ -395,7 +404,7 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
               r.A ?? "-",
               r.B ?? "-",
               r.C ?? "-",
-              calcVal > 0 ? calcVal.toFixed(2) : "-",
+              calcVal > 0 ? fmt2(calcVal) : "-",
             ]);
           });
         }
@@ -408,7 +417,7 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
             r.serialNumber ?? (chunkIdx * chunkSize + i + 1),
             r.A ?? "-",
             r.B ?? "-",
-            calcVal > 0 ? calcVal.toFixed(2) : "-",
+            calcVal > 0 ? fmt2(calcVal) : "-",
             r.remark || "-",
           ]);
         });
@@ -427,8 +436,8 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
               r.B ?? "-",
               r.C ?? "-",
               r.D ?? "-",
-              calcVal > 0 ? calcVal.toFixed(2) : "-",
-              calcCmVal > 0 ? calcCmVal.toFixed(2) : "-",
+              calcVal > 0 ? fmt2(calcVal) : "-",
+              calcCmVal > 0 ? fmt2(calcCmVal) : "-",
               r.remark || "-",
             ]);
           });
@@ -443,7 +452,7 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
               r.B ?? "-",
               r.C ?? "-",
               r.D ?? "-",
-              calcVal > 0 ? calcVal.toFixed(2) : "-",
+              calcVal > 0 ? fmt2(calcVal) : "-",
               r.remark || "-",
             ]);
           });
@@ -456,12 +465,12 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
       // Add 30-row Subtotal Row
       if (isCutting) {
         if (isNational) {
-          body.push(["", "", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+          body.push(["", "", "", "", "", "Page Subtotal:", `${fmt2(chunkSubtotalSqf)} SQF`]);
         } else {
-          body.push(["", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`]);
+          body.push(["", "", "", "Page Subtotal:", `${fmt2(chunkSubtotalSqf)} SQF`]);
         }
       } else if (isLocal) {
-        body.push(["", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+        body.push(["", "", "Page Subtotal:", `${fmt2(chunkSubtotalSqf)} SQF`, ""]);
       } else {
         if (isCustomer) {
           body.push([
@@ -470,12 +479,12 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
             "",
             "",
             "Page Subtotal:",
-            `${chunkSubtotalSqf.toFixed(2)} SQF`,
-            `${chunkSubtotalSqfCm.toFixed(2)} CM`,
+            `${fmt2(chunkSubtotalSqf)} SQF`,
+            `${fmt2(chunkSubtotalSqfCm)} CM`,
             "",
           ]);
         } else {
-          body.push(["", "", "", "", "Page Subtotal:", `${chunkSubtotalSqf.toFixed(2)} SQF`, ""]);
+          body.push(["", "", "", "", "Page Subtotal:", `${fmt2(chunkSubtotalSqf)} SQF`, ""]);
         }
       }
 
@@ -520,13 +529,13 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
 
   if (overallGrandTotalSqfCm > 0) {
     doc.text(
-      `GRAND TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF  |  ${overallGrandTotalSqfCm.toFixed(2)} SQF (CM)`,
+      `GRAND TOTAL: ${fmt2(overallGrandTotalSqf)} SQF  |  ${fmt2(overallGrandTotalSqfCm)} SQF (CM)`,
       297,
       grandY + 22,
       { align: "center" }
     );
   } else {
-    doc.text(`GRAND TOTAL: ${overallGrandTotalSqf.toFixed(2)} SQF`, 297, grandY + 22, { align: "center" });
+    doc.text(`GRAND TOTAL: ${fmt2(overallGrandTotalSqf)} SQF`, 297, grandY + 22, { align: "center" });
   }
 
   const fileName = `Measurement_${sheet.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;

@@ -44,6 +44,21 @@ export function useMeasurementSync(sheetId: string, initialUserId?: string) {
   useEffect(() => {
     if (!sheetId) return;
     const docRef = doc(db, "measurementSheets", sheetId);
+
+    // ── Warm-start from localStorage cache so the sheet renders immediately ──
+    // On slow networks, Firestore can take a few seconds. This prevents a blank
+    // full-page spinner by showing cached data while the live snapshot loads.
+    try {
+      const cached = localStorage.getItem(`measurement_${sheetId}`);
+      if (cached) {
+        const parsed: MeasurementSheet = JSON.parse(cached);
+        if (parsed && parsed.id) {
+          setSheet(parsed);
+          // Don't clear loading yet — wait for Firestore to confirm
+        }
+      }
+    } catch (_) {}
+
     const unsub = onSnapshot(
       docRef,
       (snap) => {
@@ -53,6 +68,10 @@ export function useMeasurementSync(sheetId: string, initialUserId?: string) {
           if (!pendingRef.current) {
             setSheet(data);
             setLastSavedTime(new Date());
+            // Update the cache with the latest server data
+            try {
+              localStorage.setItem(`measurement_${sheetId}`, JSON.stringify(data));
+            } catch (_) {}
           }
         }
         setLoading(false);

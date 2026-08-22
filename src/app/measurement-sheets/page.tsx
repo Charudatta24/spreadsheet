@@ -194,10 +194,19 @@ function MeasurementDashboardContent() {
 
     const sheetsMap = new Map<string, MeasurementSheet>();
 
-    const publish = () => {
+    // Only mark loading done when BOTH queries have fired their first snapshot
+    let ownerReady = false;
+    let partReady = false;
+
+    const publish = (source: "owner" | "part") => {
+      if (source === "owner") ownerReady = true;
+      if (source === "part") partReady = true;
       const all = Array.from(sheetsMap.values()).filter((s) => !isSheetPastRetention(s));
       setSheets(all);
-      setLoading(false);
+      // Only hide skeleton after both queries have resolved their first fetch
+      if (ownerReady && partReady) {
+        setLoading(false);
+      }
     };
 
     // Permanently remove owner sheets older than 2 months
@@ -232,7 +241,10 @@ function MeasurementDashboardContent() {
           }
         }
       });
-      publish();
+      publish("owner");
+    }, () => {
+      // On error, still mark owner ready so we don't hang
+      publish("owner");
     });
 
     const unsub2 = onSnapshot(qPart, (snap) => {
@@ -248,7 +260,10 @@ function MeasurementDashboardContent() {
           }
         }
       });
-      publish();
+      publish("part");
+    }, () => {
+      // On error, still mark part ready so we don't hang
+      publish("part");
     });
 
     return () => { unsub1(); unsub2(); };
@@ -1096,7 +1111,30 @@ function MeasurementDashboardContent() {
         {/* Sheets Grid */}
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-44 rounded-2xl bg-sheet-surface border border-sheet-border animate-pulse" />)}
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-44 rounded-2xl bg-sheet-surface border border-sheet-border p-5 flex flex-col justify-between overflow-hidden" style={{ animationDelay: `${i * 0.07}s` }}>
+                {/* Top badge + icon */}
+                <div className="flex items-start justify-between">
+                  <div className="flex gap-2">
+                    <div className="h-4 w-14 rounded bg-sheet-border animate-pulse" />
+                    <div className="h-4 w-10 rounded bg-sheet-border animate-pulse" style={{ animationDelay: "0.1s" }} />
+                  </div>
+                  <div className="h-5 w-5 rounded-full bg-sheet-border animate-pulse" />
+                </div>
+                {/* Title */}
+                <div className="h-4 w-3/4 rounded bg-sheet-border animate-pulse mt-3" />
+                {/* Body lines */}
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <div className="h-3 w-full rounded bg-sheet-border/60 animate-pulse" style={{ animationDelay: "0.05s" }} />
+                  <div className="h-3 w-5/6 rounded bg-sheet-border/60 animate-pulse" style={{ animationDelay: "0.1s" }} />
+                </div>
+                {/* Bottom row */}
+                <div className="flex items-center justify-between mt-3">
+                  <div className="h-3 w-24 rounded bg-sheet-border animate-pulse" />
+                  <div className="h-6 w-16 rounded-lg bg-sheet-border animate-pulse" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredSheets.length === 0 ? (
           <div className="text-center py-20 bg-sheet-surface rounded-2xl border border-sheet-border">
@@ -1118,7 +1156,7 @@ function MeasurementDashboardContent() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 reveal-content">
             {filteredSheets.map((s) => {
               const isOwner = s.userId === user.uid;
               const myStatus = getWorkerStatus(s);

@@ -184,7 +184,10 @@ export default function MeasurementSheetEditorPage() {
     });
   };
 
-  if (loading || !sheet) {
+  // Show full-page spinner only if we have absolutely no data to display.
+  // If localStorage warm-start already populated `sheet`, render the UI immediately
+  // and let Firestore sync in the background (loadingGrid shows as a subtle bar).
+  if (!sheet) {
     return <LoadingGrid fullPage size="lg" label="Loading Measurement Sheet..." />;
   }
 
@@ -204,6 +207,13 @@ export default function MeasurementSheetEditorPage() {
 
   return (
     <div className="min-h-screen h-screen flex flex-col bg-sheet-bg text-sheet-text overflow-hidden">
+      {/* Syncing banner — shown when cache is rendering but Firestore hasn't confirmed yet */}
+      {loading && (
+        <div className="flex items-center justify-center gap-2 py-1 bg-blue-50 border-b border-blue-200 text-[11px] text-blue-600 font-medium animate-pulse shrink-0">
+          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-ping opacity-75" />
+          Syncing latest data…
+        </div>
+      )}
       {/* Top Toolbar */}
       <MeasurementToolbar
         sheet={sheet}

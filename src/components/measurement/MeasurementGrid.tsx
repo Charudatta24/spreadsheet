@@ -471,11 +471,11 @@ export function MeasurementGrid({
                 TOTAL SQF =
               </td>
               <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
-                {totalVal}
+                {(Math.trunc(totalVal * 100) / 100).toFixed(2)}
               </td>
               {showNationalCmCalc && (
                 <td className="px-2 sm:px-3 py-2 text-right font-bold text-emerald-700 border-r border-sheet-border text-[11px] sm:text-xs">
-                  {cmTotalVal}
+                  {(Math.trunc(cmTotalVal * 100) / 100).toFixed(2)}
                 </td>
               )}
               {isCustomerSheet && <td></td>}
