@@ -85,22 +85,22 @@ export function OwnerRetentionNotice() {
             <AlertTriangle size={22} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800 mb-1">
+            <h2 className="text-base font-extrabold text-slate-900 font-['Cinzel','Playfair_Display',serif] mb-1">
               Sheet auto-delete reminder
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               Measurement sheets you create are{" "}
               <strong>automatically permanently deleted from the database after{" "}
               {SHEET_RETENTION_MONTHS} months</strong>.
-              Please download your Excel sheets before they expire so you keep a backup.
+              Please download your PDF sheets before they expire so you keep a backup.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-xs text-emerald-800">
-          <Download size={14} className="shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800">
+          <Download size={14} className="shrink-0 text-blue-600" />
           <span>
-            Tip: Open a sheet and use <strong>Export / Download Excel</strong> to save a copy.
+            Tip: Use <strong>Download PDF</strong> on any sheet card to save a copy.
           </span>
         </div>
 
@@ -111,7 +111,7 @@ export function OwnerRetentionNotice() {
           <button
             type="button"
             onClick={dismiss}
-            className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all active:scale-95"
+            className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all active:scale-95"
           >
             OK
           </button>

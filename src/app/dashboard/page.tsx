@@ -75,7 +75,7 @@ function NewSheetModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-sheet-text">New spreadsheet</h2>
+          <h2 className="text-base font-extrabold text-slate-900 font-['Cinzel','Playfair_Display',serif]">New spreadsheet</h2>
           <button
             onClick={onCancel}
             className="p-1 rounded hover:bg-sheet-border text-sheet-muted hover:text-sheet-text transition-colors"
@@ -353,7 +353,7 @@ export default function DashboardPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-lg font-semibold">Your spreadsheets</h1>
+          <h1 className="text-xl font-extrabold tracking-wide uppercase text-slate-900 font-['Cinzel','Playfair_Display',serif]">Your spreadsheets</h1>
           <button
             onClick={() => setShowModal(true)}
             disabled={creating}

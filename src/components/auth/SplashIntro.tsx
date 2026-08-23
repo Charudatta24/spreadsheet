@@ -2,12 +2,12 @@
 
 import React, { useEffect } from "react";
 
-// Total duration matching CSS timeline:
-// Word 1 "Measure": 0ms -> 1600ms
-// Word 2 "Sheets": 1600ms -> 3200ms
-// Tagline & ruler: 2300ms -> 2900ms
-// Splash fade out: 3300ms -> 4000ms
-const INTRO_DURATION_MS = 4000;
+// Total duration matching CSS timeline (2.5 seconds total):
+// Word 1 "Measure": 0ms -> 800ms
+// Word 2 "Sheets": 800ms -> 1600ms
+// Ruler & Tagline: 1400ms -> 2200ms
+// Splash fade out: 2000ms -> 2500ms
+const INTRO_DURATION_MS = 2500;
 
 interface SplashIntroProps {
   onComplete: () => void;
@@ -25,7 +25,7 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
       <div className="grid-mesh" />
 
       <div className="splash-content">
-        {/* First-time page load title: ONLY "Measure" and "Sheets" zooming in. NO loading cube. */}
+        {/* Pre-login title: Measure Sheets zooming in */}
         <div className="splash-title-wrapper">
           <span className="splash-word splash-word-1">Measure</span>
           <span className="splash-word splash-word-2">Sheets</span>
@@ -34,7 +34,7 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
         {/* Decorative ruler line */}
         <div className="splash-ruler-line" />
 
-        {/* Tagline */}
+        {/* Tagline: Precision in Every Measurement */}
         <p className="splash-tagline">Precision in Every Measurement</p>
       </div>
     </div>

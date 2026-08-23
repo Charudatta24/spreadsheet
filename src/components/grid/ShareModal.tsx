@@ -84,8 +84,8 @@ export function ShareModal({
       <div className="relative bg-sheet-surface border border-sheet-border rounded-2xl shadow-2xl w-full max-w-[min(95vw,28rem)] max-h-[calc(100vh-4rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-sheet-border">
-          <h2 className="text-sm font-semibold text-sheet-text flex items-center gap-2">
-            <UserPlus size={16} className="text-sheet-accent" />
+          <h2 className="text-sm font-extrabold text-slate-900 font-['Cinzel','Playfair_Display',serif] flex items-center gap-2">
+            <UserPlus size={16} className="text-blue-600" />
             Share Spreadsheet
           </h2>
           <button
@@ -100,7 +100,7 @@ export function ShareModal({
         <div className="p-4 space-y-4">
           {success ? (
             <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
-              <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-600">
                 <Check size={24} />
               </div>
               <div>

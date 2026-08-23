@@ -4,6 +4,7 @@ import { AppBootstrap } from "@/components/auth/AppBootstrap";
 import { NamePromptModal } from "@/components/auth/NamePromptModal";
 import { AccountTypePromptModal } from "@/components/auth/AccountTypePromptModal";
 import { FactoryNamePromptModal } from "@/components/auth/FactoryNamePromptModal";
+import { NicknamePromptModal } from "@/components/auth/NicknamePromptModal";
 
 export const metadata: Metadata = {
   title: "MeasureSheets",
@@ -23,6 +24,7 @@ export default function RootLayout({
           <NamePromptModal />
           <AccountTypePromptModal />
           <FactoryNamePromptModal />
+          <NicknamePromptModal />
         </AppBootstrap>
       </body>
     </html>

@@ -69,7 +69,7 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40 text-left flex items-center justify-between"
+        className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 text-left flex items-center justify-between"
       >
         <span className={selectedUser ? "text-sheet-text font-medium" : "text-sheet-muted"}>
           {selectedUser ? selectedUser.displayName : placeholder}
@@ -87,7 +87,7 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
                 placeholder="Type name, nickname, or email to search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-sheet-bg border border-sheet-border rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-emerald-500/40"
+                className="w-full bg-sheet-bg border border-sheet-border rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-blue-500/40"
                 autoFocus
               />
             </div>
@@ -114,10 +114,10 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
                     setSearch("");
                   }}
                   className={`w-full text-left flex items-center px-2.5 py-2.5 rounded-lg text-xs transition-colors ${
-                    value === u.uid ? "bg-emerald-50 text-emerald-700 font-medium" : "hover:bg-sheet-bg text-sheet-text"
+                    value === u.uid ? "bg-blue-50 text-blue-700 font-medium" : "hover:bg-sheet-bg text-sheet-text"
                   }`}
                 >
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mr-2.5 shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2.5 shrink-0">
                     <UserIcon size={12} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -128,7 +128,7 @@ export function UserSelectDropdown({ value, onChange, excludeUserIds = [], place
                       </div>
                     )}
                   </div>
-                  {value === u.uid && <Check size={14} className="text-emerald-500 shrink-0 ml-2" />}
+                  {value === u.uid && <Check size={14} className="text-blue-500 shrink-0 ml-2" />}
                 </button>
               ))
             )}

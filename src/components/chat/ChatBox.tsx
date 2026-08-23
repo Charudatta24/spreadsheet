@@ -248,13 +248,13 @@ export default function ChatboxPage() {
           <div className="w-6 h-6 rounded-md bg-sheet-accent/10 flex items-center justify-center">
             <MessageCircle size={14} className="text-sheet-accent" />
           </div>
-          <span className="font-semibold text-sm text-sheet-text">Chatbox</span>
+          <span className="font-extrabold text-sm text-slate-900 font-['Cinzel','Playfair_Display',serif]">Chatbox</span>
         </div>
         {activeFriend && (
           <>
             <div className="w-px h-4 bg-sheet-border" />
             <div className="flex items-center gap-1.5 text-xs text-sheet-muted">
-              <Lock size={11} className="text-emerald-500" />
+              <Lock size={11} className="text-blue-600" />
               <span>
                 Private chat with{" "}
                 <span className="font-semibold text-sheet-text">
@@ -382,7 +382,7 @@ export default function ChatboxPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full px-3 py-1 font-semibold">
+                <div className="flex items-center gap-1.5 text-[11px] bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-3 py-1 font-semibold">
                   <Lock size={10} />
                   Private · Only you two can see this
                 </div>

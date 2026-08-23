@@ -156,7 +156,7 @@ export function EditorHeader({
 function SaveIndicator({ state }: { state: string }) {
   if (state === "saved") {
     return (
-      <div className="flex items-center gap-1 text-xs text-emerald-400">
+      <div className="flex items-center gap-1 text-xs text-blue-500">
         <Check size={12} />
         Saved
       </div>

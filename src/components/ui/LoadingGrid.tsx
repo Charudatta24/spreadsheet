@@ -7,11 +7,13 @@ interface LoadingGridProps {
   className?: string;
   label?: string;
   fullPage?: boolean;
+  /** Renders as a fixed overlay with backdrop-blur over the current page */
+  overlay?: boolean;
 }
 
-export function LoadingGrid({ size = "md", className = "", label, fullPage }: LoadingGridProps) {
+export function LoadingGrid({ size = "md", className = "", label, fullPage, overlay }: LoadingGridProps) {
   // Small inline spinner mode (e.g. inside buttons / small cards)
-  if (size === "sm" && !fullPage) {
+  if (size === "sm" && !fullPage && !overlay) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
         <div className="sk-folding-cube !w-5 !h-5">
@@ -24,15 +26,14 @@ export function LoadingGrid({ size = "md", className = "", label, fullPage }: Lo
     );
   }
 
-  // Page reload / network loading state:
-  // Static "Measure" [sk-folding-cube] "Sheets"
+  // Loading content: "Measure [spinner] Sheets"
   const content = (
     <div className={`flex flex-col items-center justify-center gap-5 ${className}`}>
       <div className="splash-title-wrapper">
         <span className="splash-word-static-1">Measure</span>
 
-        <div className="mx-2 sm:mx-3 flex items-center justify-center">
-          <div className="sk-folding-cube">
+        <div className="mx-2 flex items-center justify-center">
+          <div className="sk-folding-cube !w-5 !h-5">
             <div className="sk-cube1 sk-cube" />
             <div className="sk-cube2 sk-cube" />
             <div className="sk-cube4 sk-cube" />
@@ -51,6 +52,16 @@ export function LoadingGrid({ size = "md", className = "", label, fullPage }: Lo
     </div>
   );
 
+  // Overlay mode: blurred backdrop over current page, loading centered on top (no box)
+  if (overlay) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-sm bg-white/40">
+        {content}
+      </div>
+    );
+  }
+
+  // Full-page mode: replaces the screen (used only for unauthenticated states)
   if (fullPage) {
     return (
       <div className="loading-background overflow-hidden">

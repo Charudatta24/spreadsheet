@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   signInWithPopup,
   signInWithRedirect,
@@ -41,19 +42,17 @@ function authErrorMessage(err: unknown): string {
 }
 
 export function LoginScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  // Stores the partially-built user while waiting for nickname input
   const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
   const { setUser } = useAuthStore();
 
   async function finishSignIn(uid: string, displayName: string, email: string | null, photoURL: string | null) {
-    // Fresh Google login — owners will see the 2-month retention notice after auth completes
     markOwnerRetentionNoticePending();
-
     const color = colorForUid(uid);
 
-    let savedProfile: { displayName?: string; nickname?: string; accountType?: any; workType?: any } | null = null;
+    let savedProfile: { displayName?: string; nickname?: string; accountType?: any; workType?: any; factoryName?: string } | null = null;
     try {
       savedProfile = await getUserProfile(uid);
     } catch (e) {
@@ -63,6 +62,7 @@ export function LoginScreen() {
     const savedNickname = savedProfile?.nickname ?? null;
     const savedAccountType = savedProfile?.accountType ?? null;
     const savedWorkType = savedProfile?.workType ?? null;
+    const savedFactoryName = savedProfile?.factoryName ?? null;
 
     const user: AppUser = {
       uid,
@@ -74,27 +74,31 @@ export function LoginScreen() {
       nickname: savedNickname ?? undefined,
       accountType: savedAccountType ?? undefined,
       workType: savedWorkType ?? undefined,
+      factoryName: savedFactoryName ?? undefined,
     };
 
     if (savedNickname) {
       setUser(user);
       try {
+        localStorage.setItem("collabsheet_is_logged_in", "true");
         await setUserProfile(user.uid, {
           displayName: user.displayName,
           email: user.email,
           nickname: savedNickname,
           accountType: savedAccountType ?? undefined,
           workType: savedWorkType ?? undefined,
+          factoryName: savedFactoryName ?? undefined,
         });
       } catch (e) {
         console.error("Failed to update profile after sign-in", e);
       }
+      router.replace("/hub");
     } else {
       setPendingUser(user);
     }
   }
 
-  // Complete redirect-based Google sign-in (fallback when popup is blocked)
+  // Complete redirect-based Google sign-in
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -122,9 +126,6 @@ export function LoginScreen() {
   async function handleGoogle() {
     setError("");
     try {
-      // Open the popup immediately from the click handler.
-      // Do not set loading / re-render first — that breaks the user gesture
-      // and often causes popup-blocked or popup-closed-by-user errors.
       const result = await signInWithPopup(auth, provider);
       setLoading(true);
       const u = result.user;
@@ -137,7 +138,6 @@ export function LoginScreen() {
         return;
       }
 
-      // Fall back to redirect when popup cannot be used
       if (
         code === "auth/popup-blocked" ||
         code === "auth/operation-not-supported-in-this-environment" ||
@@ -171,45 +171,64 @@ export function LoginScreen() {
     } catch (e) {
       console.error("Failed to save nickname", e);
     }
-    setUser({ ...pendingUser, nickname });
+    const updated = { ...pendingUser, nickname };
+    setUser(updated);
+    try {
+      localStorage.setItem("collabsheet_is_logged_in", "true");
+    } catch (_) {}
     setPendingUser(null);
+    router.replace("/hub");
   }
 
   return (
     <>
-      {/* Nickname prompt shown after Google sign-in for first-time users */}
-      {pendingUser && (
-        <NicknameModal onConfirm={handleNicknameConfirm} />
-      )}
+      {pendingUser && <NicknameModal onConfirm={handleNicknameConfirm} />}
 
       {loading && <LoadingPortal fullPage />}
 
-      <div className="flex items-center justify-center h-screen bg-sheet-bg">
-        <div className="w-full max-w-sm mx-4">
-            {/* Logo */}
-            <div className="flex flex-col items-center justify-center gap-1 mb-6 text-center">
-              <div className="login-title-brand flex items-center justify-center gap-1.5">
-                <span className="text-slate-900">Measure</span>
-                <span className="text-blue-600">Sheets</span>
-              </div>
-              <span className="text-[11px] font-semibold tracking-widest text-slate-400 uppercase font-['Rajdhani']">
-                Precision in Every Measurement
+      <div className="relative min-h-screen w-full bg-sheet-bg flex items-center justify-center overflow-hidden animate-slow-login">
+        {/* Subtle grid mesh background */}
+        <div className="grid-mesh fixed inset-0 pointer-events-none z-0" />
+
+        <div className="relative z-10 w-full max-w-sm mx-4 flex flex-col items-center">
+          {/* Logo Title & Tagline Container */}
+          <div className="flex flex-col items-center justify-center text-center mb-6">
+            {/* Logo Title */}
+            <div className="login-title-brand flex items-center justify-center gap-2">
+              <span className="text-slate-900 font-extrabold uppercase font-['Cinzel','Playfair_Display',serif]">
+                Measure
+              </span>
+              <span className="text-blue-600 font-extrabold uppercase font-['Cinzel','Playfair_Display',serif]">
+                Sheets
               </span>
             </div>
 
-          <div className="bg-sheet-surface rounded-xl border border-sheet-border p-6 space-y-4">
-            {/* Google */}
+            {/* Decorative Ruler Line */}
+            <div className="h-[2px] w-28 bg-gradient-to-r from-transparent via-slate-900 to-blue-600 my-2 opacity-60" />
+
+            {/* Tagline */}
+            <span className="text-[11px] font-bold tracking-[0.28em] text-slate-500 uppercase font-['Rajdhani']">
+              Precision in Every Measurement
+            </span>
+          </div>
+
+          {/* Google Sign-in Card Container */}
+          <div className="w-full bg-sheet-surface rounded-2xl border border-sheet-border p-6 shadow-xl">
             <button
               onClick={handleGoogle}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg bg-white text-gray-800 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 hover:border-blue-500/40 hover:bg-blue-50/20 text-slate-900 font-extrabold text-sm transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 group"
             >
               <GoogleIcon />
-              {loading ? "Signing in…" : "Continue with Google"}
+              <span className="text-slate-900 group-hover:text-blue-600 transition-colors font-extrabold">
+                {loading ? "Signing in…" : "Continue with Google"}
+              </span>
             </button>
 
             {error && (
-              <p className="text-red-400 text-xs text-center">{error}</p>
+              <p className="text-red-500 text-xs text-center mt-3 font-medium">
+                {error}
+              </p>
             )}
           </div>
         </div>

@@ -58,7 +58,7 @@ export function NicknameModal({ onConfirm }: NicknameModalProps) {
             ✏️
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-sheet-text">Choose a nickname</h2>
+            <h2 className="text-base font-extrabold text-slate-900 font-['Cinzel','Playfair_Display',serif]">Choose a nickname</h2>
             <p className="text-xs text-sheet-muted mt-0.5">
               This will show up while you collaborate.
             </p>
@@ -74,7 +74,7 @@ export function NicknameModal({ onConfirm }: NicknameModalProps) {
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder="e.g. Alex, Phani, DataWizard…"
           maxLength={32}
-          className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-sheet-accent transition-colors mb-1"
+          className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2.5 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 transition-all mb-1 font-medium"
         />
         {error && <p className="text-red-400 text-xs mb-2">{error}</p>}
 
@@ -82,7 +82,7 @@ export function NicknameModal({ onConfirm }: NicknameModalProps) {
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full mt-3 px-4 py-2.5 rounded-lg bg-sheet-accent hover:bg-sheet-accent-dim text-white text-sm font-semibold transition-colors disabled:opacity-50"
+          className="w-full mt-3 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
         >
           {loading ? "Checking..." : "Save nickname"}
         </button>

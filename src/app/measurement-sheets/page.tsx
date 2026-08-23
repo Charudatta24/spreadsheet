@@ -23,6 +23,7 @@ import {
   Bell,
   ChevronDown,
   ArrowRight,
+  FileText,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
@@ -56,7 +57,7 @@ import {
   isSheetPastRetention,
   purgeExpiredOwnerSheets,
 } from "@/lib/measurementRetention";
-import { calculateSheetTotal } from "@/lib/measurementExport";
+import { calculateSheetTotal, exportMeasurementToPDF } from "@/lib/measurementExport";
 
 interface SelectedPerson {
   userId: string;
@@ -837,7 +838,7 @@ function MeasurementDashboardContent() {
   if (!user) return <LoadingGrid fullPage size="lg" label="Loading Measurement Workspace..." />;
 
   const statusColor = (status?: string) => {
-    if (status === "accepted") return "text-emerald-600 bg-emerald-50 border-emerald-200";
+    if (status === "accepted") return "text-blue-600 bg-blue-50 border-blue-200";
     if (status === "declined") return "text-red-500 bg-red-50 border-red-200";
     return "text-amber-600 bg-amber-50 border-amber-200";
   };
@@ -884,7 +885,7 @@ function MeasurementDashboardContent() {
             <AppSwitcher currentApp="measurement-sheets" />
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
+            <div className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 border border-blue-200 flex items-center justify-center font-bold text-[10px]">
               {user.displayName?.[0]?.toUpperCase() ?? "U"}
             </div>
             <span>{user.displayName}</span>
@@ -893,7 +894,7 @@ function MeasurementDashboardContent() {
 
         <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-10">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 mb-2 font-['Rajdhani']">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider uppercase flex items-center justify-center gap-2 mb-2 font-['Cinzel','Playfair_Display',serif]">
               <Ruler className="text-blue-600" size={28} />
               <span className="text-slate-900">Measurement</span>
               <span className="text-blue-600">Sheets</span>
@@ -909,7 +910,7 @@ function MeasurementDashboardContent() {
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users size={32} />
                 </div>
-                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Customer</span> <span className="text-blue-600">Sheet</span></span>
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Cinzel','Playfair_Display',serif]"><span className="text-slate-900">Customer</span> <span className="text-blue-600">Sheet</span></span>
                 <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Customer Section</span>
                   <ArrowRight size={16} />
@@ -920,13 +921,13 @@ function MeasurementDashboardContent() {
             {(user.accountType !== "non-owner" || (user as any).workType === "polish") && (
               <button
                 onClick={() => router.push("/measurement-sheets?type=polish")}
-                className="group bg-sheet-surface border-2 border-sheet-border hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+                className="group bg-sheet-surface border-2 border-sheet-border hover:border-blue-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
               >
-                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <User size={32} />
                 </div>
-                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Polish</span> <span className="text-blue-600">Sheet</span></span>
-                <div className="flex items-center gap-2 text-emerald-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Cinzel','Playfair_Display',serif]"><span className="text-slate-900">Polish</span> <span className="text-blue-600">Sheet</span></span>
+                <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Polish Section</span>
                   <ArrowRight size={16} />
                 </div>
@@ -936,13 +937,13 @@ function MeasurementDashboardContent() {
             {(user.accountType !== "non-owner" || (user as any).workType === "cutting") && (
               <button
                 onClick={() => router.push("/measurement-sheets?type=cutting")}
-                className="group bg-sheet-surface border-2 border-sheet-border hover:border-indigo-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
+                className="group bg-sheet-surface border-2 border-sheet-border hover:border-blue-500 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:shadow-2xl transition-all duration-300 active:scale-95"
               >
-                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Ruler size={32} />
                 </div>
-                <span className="text-xl font-extrabold uppercase tracking-wide font-['Rajdhani']"><span className="text-slate-900">Cutting</span> <span className="text-blue-600">Sheet</span></span>
-                <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
+                <span className="text-xl font-extrabold uppercase tracking-wide font-['Cinzel','Playfair_Display',serif]"><span className="text-slate-900">Cutting</span> <span className="text-blue-600">Sheet</span></span>
+                <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs mt-2 group-hover:gap-3 transition-all">
                   <span>Select Cutting Section</span>
                   <ArrowRight size={16} />
                 </div>
@@ -988,7 +989,7 @@ function MeasurementDashboardContent() {
           )}
 
           <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border border-sheet-border bg-white/60 text-xs font-medium">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
+            <div className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 border border-blue-200 flex items-center justify-center font-bold text-[10px]">
               {user.displayName?.[0]?.toUpperCase() ?? "U"}
             </div>
             <span className="hidden sm:inline">{user.displayName}</span>
@@ -1000,7 +1001,7 @@ function MeasurementDashboardContent() {
                 resetForm();
                 setShowCreateModal(true);
               }}
-              className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold shadow-md transition-all active:scale-95"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">New Measurement Sheet</span>
@@ -1014,8 +1015,8 @@ function MeasurementDashboardContent() {
         {/* Title Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-lg sm:text-2xl font-extrabold tracking-wide uppercase text-slate-900 flex items-center gap-2 font-['Rajdhani']">
-              <Ruler className="text-blue-600" size={22} />
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-wider uppercase text-slate-900 flex items-center gap-2 font-['Cinzel','Playfair_Display',serif]">
+              <Ruler className="text-blue-600" size={24} />
               <span className="text-slate-900">{sectionLabel}</span>
               <span className="text-blue-600">Measurement Sheets</span>
             </h1>
@@ -1057,7 +1058,7 @@ function MeasurementDashboardContent() {
 
                       <button
                         onClick={() => handleAcceptRequest(s)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-colors bg-emerald-600 text-white hover:bg-emerald-700"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-colors bg-blue-600 text-white hover:bg-blue-700"
                         title="Accept request"
                       >
                         <CheckCircle size={14} />
@@ -1080,7 +1081,7 @@ function MeasurementDashboardContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by person, date, title…"
-              className="w-full bg-sheet-bg border border-sheet-border rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
+              className="w-full bg-sheet-bg border border-sheet-border rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
             />
             {search && (
               <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-sheet-muted hover:text-sheet-text">
@@ -1151,7 +1152,7 @@ function MeasurementDashboardContent() {
             {user.accountType !== "non-owner" && (
               <button
                 onClick={() => { resetForm(); setShowCreateModal(true); }}
-                className="mt-4 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
+                className="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-xs font-semibold shadow-md transition-all active:scale-95"
               >
                 <Plus size={15} /><span>Create New Sheet</span>
               </button>
@@ -1182,12 +1183,12 @@ function MeasurementDashboardContent() {
                 <div
                   key={s.id}
                   onClick={() => canOpen && router.push(`/measurement-sheets/${s.id}`)}
-                  className={`group relative bg-sheet-surface border border-sheet-border hover:border-emerald-500/40 rounded-2xl p-5 hover:shadow-xl transition-all duration-200 flex flex-col justify-between ${canOpen ? "cursor-pointer" : "cursor-not-allowed opacity-75"}`}
+                  className={`group relative bg-sheet-surface border border-sheet-border hover:border-blue-500/40 rounded-2xl p-5 hover:shadow-xl transition-all duration-200 flex flex-col justify-between ${canOpen ? "cursor-pointer" : "cursor-not-allowed opacity-75"}`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${s.locationType === "local" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-blue-500/10 text-blue-600 border border-blue-500/20"}`}>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 border border-blue-500/20">
                           {s.locationType}
                         </span>
                         {!isOwner && (
@@ -1206,7 +1207,7 @@ function MeasurementDashboardContent() {
                       )}
                     </div>
 
-                    <h3 className="font-bold text-sm text-sheet-text mb-1 truncate group-hover:text-emerald-600 transition-colors">
+                    <h3 className="font-bold text-sm text-sheet-text mb-1 truncate group-hover:text-blue-600 transition-colors">
                       {s.title}
                     </h3>
 
@@ -1216,9 +1217,9 @@ function MeasurementDashboardContent() {
                     </div>
 
                     {/* Total SQF Badge */}
-                    <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200/60">
-                      <Ruler size={13} className="text-emerald-600" />
-                      <span className="text-[11px] font-bold text-emerald-700">
+                    <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-blue-50 rounded-lg border border-blue-200/60">
+                      <Ruler size={13} className="text-blue-600" />
+                      <span className="text-[11px] font-bold text-blue-700">
                         Total SQF: {calculateSheetTotal(s).toFixed(2)}
                       </span>
                     </div>
@@ -1250,7 +1251,7 @@ function MeasurementDashboardContent() {
                     {isOwner && hasMultipleParticipants && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setStatusModalSheet(s); }}
-                        className="w-full text-left text-[10px] text-slate-500 hover:text-emerald-600 flex items-center gap-1 mb-2"
+                        className="w-full text-left text-[10px] text-slate-500 hover:text-blue-600 flex items-center gap-1 mb-2"
                       >
                         <Users size={10} />
                         View participant status
@@ -1267,7 +1268,6 @@ function MeasurementDashboardContent() {
                           e.stopPropagation();
                           setManageSheet(s);
                           setManageTitle(s.title);
-                          // Private sheet "name" is not an invited person — only show real invitees here
                           setManagePeople(
                             s.sheetCategory === "cutting"
                               ? getCuttingInvitees(s)
@@ -1276,11 +1276,22 @@ function MeasurementDashboardContent() {
                               : [...s.people]
                           );
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200/80 transition-all active:scale-95"
+                        className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs border border-blue-700 transition-all active:scale-95 shadow-sm"
                         title="Manage Members & Permissions"
                       >
                         <Edit2 size={12} />
                         <span>Change</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportMeasurementToPDF(s, user?.factoryName);
+                        }}
+                        className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-red-600 font-bold text-xs border border-slate-200 hover:border-red-200 transition-all active:scale-95"
+                        title="Download PDF"
+                      >
+                        <FileText size={12} />
+                        <span>PDF</span>
                       </button>
                       <button
                         onClick={(e) => {
@@ -1306,6 +1317,22 @@ function MeasurementDashboardContent() {
                       </button>
                     </div>
                   )}
+
+                  {!isOwner && (
+                    <div className="flex items-center gap-1.5 border-t border-sheet-border pt-3 mt-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportMeasurementToPDF(s, user?.factoryName);
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-red-600 font-bold text-xs border border-slate-200 hover:border-red-200 transition-all active:scale-95"
+                        title="Download PDF"
+                      >
+                        <FileText size={12} />
+                        <span>Download PDF</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1318,8 +1345,8 @@ function MeasurementDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-sheet-border pb-3">
-              <h2 className="text-lg font-bold text-sheet-text flex items-center gap-2">
-                <Ruler size={20} className="text-emerald-600" />
+              <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 font-['Cinzel','Playfair_Display',serif]">
+                <Ruler size={20} className="text-blue-600" />
                 New {sectionLabel} Measurement Sheet
               </h2>
               <button onClick={() => setShowCreateModal(false)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
@@ -1361,7 +1388,7 @@ function MeasurementDashboardContent() {
                       setFormNumMachines(null);
                     }
                   }}
-                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500/40"
                 />
               </div>
             )}
@@ -1385,7 +1412,7 @@ function MeasurementDashboardContent() {
                         setFormNumSlabs(raw);
                       }
                     }}
-                    className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500/40"
                   />
                 </div>
                 <div>
@@ -1394,11 +1421,11 @@ function MeasurementDashboardContent() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setFormLocationType("local")}
-                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formLocationType === "local" ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formLocationType === "local" ? "border-blue-500 bg-blue-50/50 text-blue-600 ring-2 ring-blue-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
                       Local
                     </button>
                     <button type="button" onClick={() => setFormLocationType("national")}
-                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formLocationType === "national" ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formLocationType === "national" ? "border-blue-500 bg-blue-50/50 text-blue-600 ring-2 ring-blue-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
                       National
                     </button>
                   </div>
@@ -1409,11 +1436,11 @@ function MeasurementDashboardContent() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setFormSheetType("private")}
-                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formSheetType === "private" ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formSheetType === "private" ? "border-blue-500 bg-blue-50/50 text-blue-600 ring-2 ring-blue-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
                       Private
                     </button>
                     <button type="button" onClick={() => setFormSheetType("multiple")}
-                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formSheetType === "multiple" ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 ring-2 ring-emerald-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all ${formSheetType === "multiple" ? "border-blue-500 bg-blue-50/50 text-blue-600 ring-2 ring-blue-500/30" : "border-sheet-border hover:bg-sheet-bg text-slate-600"}`}>
                       Multiple
                     </button>
                   </div>
@@ -1432,7 +1459,7 @@ function MeasurementDashboardContent() {
                   placeholder="Enter sheet name…"
                   value={singleName}
                   onChange={(e) => setSingleName(e.target.value)}
-                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 font-medium"
                 />
               </div>
             )}
@@ -1456,7 +1483,7 @@ function MeasurementDashboardContent() {
                     pattern="[0-9]*"
                     value={numPeople}
                     onChange={(e) => handleNumPeopleChange(e.target.value)}
-                    className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500/40 font-mono"
+                    className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 font-mono"
                   />
                 </div>
 
@@ -1482,14 +1509,14 @@ function MeasurementDashboardContent() {
             {/* Modal Actions */}
             <div className="flex items-center justify-end gap-3 border-t border-sheet-border pt-4">
               <button type="button" onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border transition-colors">
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-sheet-border transition-colors">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!isFormValid || isCreating}
                 onClick={handleCreateSheet}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 transition-all active:scale-95"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md disabled:opacity-40 transition-all active:scale-95"
               >
                 {isCreating ? "Creating…" : "Create Sheet"}
               </button>
@@ -1503,8 +1530,8 @@ function MeasurementDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-base text-sheet-text flex items-center gap-2">
-                <Users size={16} className="text-emerald-600" />
+              <h3 className="font-extrabold text-base text-slate-900 font-['Cinzel','Playfair_Display',serif] flex items-center gap-2">
+                <Users size={16} className="text-blue-600" />
                 Participant Status
               </h3>
               <button onClick={() => setStatusModalSheet(null)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
@@ -1518,7 +1545,7 @@ function MeasurementDashboardContent() {
               ).map((p, i) => (
                 <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-sheet-border/60">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                       {p.name[0]?.toUpperCase()}
                     </div>
                     <span className="text-sm font-medium text-slate-700">{p.name}</span>
@@ -1544,8 +1571,8 @@ function MeasurementDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-sheet-border pb-3 shrink-0">
-              <h2 className="text-base font-bold text-sheet-text flex items-center gap-2">
-                <Edit2 size={18} className="text-emerald-600" />
+              <h2 className="text-base font-extrabold text-slate-900 font-['Cinzel','Playfair_Display',serif] flex items-center gap-2">
+                <Edit2 size={18} className="text-blue-600" />
                 Manage Sheet & Permissions
               </h2>
               <button onClick={() => setManageSheet(null)} className="p-1 rounded-lg hover:bg-sheet-border text-sheet-muted">
@@ -1563,7 +1590,7 @@ function MeasurementDashboardContent() {
                 type="text"
                 value={manageTitle}
                 onChange={(e) => setManageTitle(e.target.value)}
-                className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/40"
               />
               {manageSheet.sheetType === "private" && (
                 <p className="mt-1.5 text-[11px] text-slate-500">
@@ -1661,7 +1688,7 @@ function MeasurementDashboardContent() {
                       <div key={person.userId || idx} className="p-3 rounded-xl bg-white border border-sheet-border/80 shadow-sm flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">
                               {person.name[0]?.toUpperCase()}
                             </div>
                             <span className="text-xs font-bold text-slate-800 truncate">{person.name}</span>
@@ -1694,7 +1721,7 @@ function MeasurementDashboardContent() {
                                   };
                                   setManagePeople(updated);
                                 }}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500/30"
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/30"
                               >
                                 <option value="can_modify">Can Modify</option>
                                 <option value="view_only">Cannot Modify / View Only</option>
@@ -1736,7 +1763,7 @@ function MeasurementDashboardContent() {
                 type="button"
                 disabled={isSavingManage}
                 onClick={handleSaveManageSheet}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 transition-all active:scale-95 flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-40 transition-all active:scale-95 flex items-center gap-1.5"
               >
                 {isSavingManage ? "Saving…" : "Save Changes"}
               </button>
@@ -1754,7 +1781,7 @@ function MeasurementDashboardContent() {
                 <Trash2 size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-base text-sheet-text mb-1">Move to Deleted Sheets?</h3>
+                <h3 className="font-extrabold text-base text-slate-900 font-['Cinzel','Playfair_Display',serif] mb-1">Move to Deleted Sheets?</h3>
                 <p className="text-xs text-slate-500">
                   The sheet will move to <strong>Settings &gt; Account &gt; Deleted Sheets</strong> and stay recoverable for <strong>5 days</strong>. After that, it will be permanently deleted from the database.
                 </p>
@@ -1772,25 +1799,25 @@ function MeasurementDashboardContent() {
       {renamingSheet && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-sheet-surface border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
-            <h3 className="font-bold text-base text-sheet-text">Rename Sheet</h3>
+            <h3 className="font-extrabold text-base text-slate-900 font-['Cinzel','Playfair_Display',serif]">Rename Sheet</h3>
             <input
               type="text"
               value={renameInput}
               onChange={(e) => setRenameInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit()}
               autoFocus
-              className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/40"
             />
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setRenamingSheet(null)} className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-sheet-border">Cancel</button>
-              <button onClick={handleRenameSubmit} className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">Save</button>
+              <button onClick={handleRenameSubmit} className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm">Save</button>
             </div>
           </div>
         </div>
       )}
 
       <style jsx>{`
-        .grid-mesh { background-image: linear-gradient(rgba(16,185,129,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.03) 1px, transparent 1px); background-size: 60px 60px; animation: grid-scroll 20s linear infinite; }
+        .grid-mesh { background-image: linear-gradient(rgba(26,115,232,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,115,232,0.03) 1px, transparent 1px); background-size: 60px 60px; animation: grid-scroll 20s linear infinite; }
         @keyframes grid-scroll { from { background-position: 0 0; } to { background-position: 60px 60px; } }
       `}</style>
     </div>

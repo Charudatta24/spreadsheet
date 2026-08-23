@@ -290,9 +290,10 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
   const isCustomer = sheet.personType === "customer";
   const isNational = !isLocal;
 
-  sheet.people.forEach((person, personIdx) => {
+  (sheet.people || []).forEach((person, personIdx) => {
     // Filter non-empty rows for this person
-    const nonEmptyRows = person.rows.filter((r) => {
+    const rows = person.rows || [];
+    const nonEmptyRows = rows.filter((r) => {
       if (isCutting) {
         return (r.A != null && r.A !== 0) || (r.B != null && r.B !== 0) || (r.C != null && r.C !== 0);
       } else if (isLocal) {
@@ -539,7 +540,24 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
   }
 
   const fileName = `Measurement_${sheet.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
-  doc.save(fileName);
+
+  // Force direct browser file download
+  try {
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  } catch (_) {
+    doc.save(fileName);
+  }
 }
 
 /**

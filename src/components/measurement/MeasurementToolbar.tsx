@@ -4,24 +4,16 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Download,
-  Printer,
-  Undo2,
-  Redo2,
   CheckCircle2,
   RefreshCw,
   AlertCircle,
   WifiOff,
   User,
-  FileSpreadsheet,
   Shield,
   FileText,
-  Clock,
-  Lock,
 } from "lucide-react";
 import type { MeasurementSheet, SaveState, WorkerPermissions } from "@/types";
-import { exportMeasurementToExcel, exportMeasurementToCSV, exportMeasurementToPDF, calculateSheetTotal } from "@/lib/measurementExport";
-import { AppSwitcher } from "@/components/ui/AppSwitcher";
+import { exportMeasurementToPDF, calculateSheetTotal } from "@/lib/measurementExport";
 import { useAuthStore } from "@/lib/sync/authStore";
 
 interface MeasurementToolbarProps {
@@ -94,15 +86,6 @@ export function MeasurementToolbar({
     onUpdatePermissions(activePersonIdx, updated);
   };
 
-  // Determine permission indicator label
-  const permBadgeLabel = isOwner
-    ? "Owner"
-    : currentUserPermissions?.canModifyMeasurements
-    ? "View + Edit"
-    : isReadonlyDay
-    ? "Completed / Read Only"
-    : "View Only";
-
   return (
     <header className="sticky top-0 z-30 bg-sheet-surface border-b border-sheet-border">
       {/* Main toolbar row */}
@@ -117,12 +100,6 @@ export function MeasurementToolbar({
             <ArrowLeft size={17} />
           </Link>
 
-          <div className="hidden sm:block shrink-0">
-            <AppSwitcher currentApp="measurement-sheets" />
-          </div>
-
-          <div className="hidden sm:block h-4 w-px bg-sheet-border mx-0.5" />
-
           {/* Title */}
           {editingTitle && isOwner ? (
             <input
@@ -132,7 +109,7 @@ export function MeasurementToolbar({
               onBlur={handleTitleCommit}
               onKeyDown={(e) => e.key === "Enter" && handleTitleCommit()}
               autoFocus
-              className="px-2 py-1 text-xs sm:text-sm font-semibold text-sheet-text bg-white border border-emerald-500 rounded outline-none w-full max-w-[12rem] sm:max-w-[18rem]"
+              className="px-2 py-1 text-xs sm:text-sm font-semibold text-sheet-text bg-white border border-blue-500 rounded outline-none w-full max-w-[12rem] sm:max-w-[18rem]"
             />
           ) : (
             <h1
@@ -150,34 +127,10 @@ export function MeasurementToolbar({
               {sheet.title}
             </h1>
           )}
-
-          {/* Starting Serial Number Lock Indicator — Customer sheets only */}
-          {sheet.sheetCategory === "customer" && (
-            <span
-              className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200"
-              title="Starting Serial Number is permanently locked"
-            >
-              <Lock size={10} />
-              Start S.No: {sheet.startingSerialNumber ?? 1}
-            </span>
-          )}
         </div>
 
         {/* Right: status, indicator, actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Permission Indicator Badge */}
-          <span
-            className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-              isOwner
-                ? "bg-purple-50 text-purple-700 border border-purple-200"
-                : currentUserPermissions?.canModifyMeasurements
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-amber-50 text-amber-700 border border-amber-200"
-            }`}
-          >
-            <Shield size={11} />
-            {permBadgeLabel}
-          </span>
 
           {/* Manage Permissions Button (Owner Only) — only when invited people exist */}
           {isOwner &&
@@ -218,42 +171,11 @@ export function MeasurementToolbar({
             )}
           </div>
 
-          {/* Undo / Redo */}
-          {isOwner && (
-            <>
-              <button
-                onClick={onUndo}
-                disabled={!canUndo}
-                className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text disabled:opacity-30 transition-colors"
-                title="Undo"
-              >
-                <Undo2 size={15} />
-              </button>
-              <button
-                onClick={onRedo}
-                disabled={!canRedo}
-                className="p-1.5 rounded-lg hover:bg-sheet-border text-sheet-muted hover:text-sheet-text disabled:opacity-30 transition-colors"
-                title="Redo"
-              >
-                <Redo2 size={15} />
-              </button>
-            </>
-          )}
 
-          {/* Excel Export */}
-          <button
-            onClick={() => exportMeasurementToExcel(sheet)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
-            title="Download as Excel (.xlsx)"
-          >
-            <Download size={13} />
-            <span>Excel</span>
-          </button>
-
-          {/* PDF Export */}
+          {/* PDF Export Only */}
           <button
             onClick={() => exportMeasurementToPDF(sheet, user?.factoryName)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
             title="Download as PDF"
           >
             <FileText size={13} />
@@ -277,7 +199,7 @@ export function MeasurementToolbar({
               onClick={() => onSelectPerson(idx)}
               className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-medium transition-all shrink-0 ${
                 activePersonIdx === idx
-                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
+                  ? "bg-blue-600 text-white shadow-sm font-semibold"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -311,7 +233,7 @@ export function MeasurementToolbar({
                   type="checkbox"
                   checked={currentPerms.canModifyMeasurements}
                   onChange={() => togglePermKey("canModifyMeasurements")}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-blue-600 rounded"
                 />
               </label>
 
@@ -321,7 +243,7 @@ export function MeasurementToolbar({
                   type="checkbox"
                   checked={currentPerms.canModifySerialNumbers}
                   onChange={() => togglePermKey("canModifySerialNumbers")}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-blue-600 rounded"
                 />
               </label>
 
@@ -331,7 +253,7 @@ export function MeasurementToolbar({
                   type="checkbox"
                   checked={currentPerms.canModifyRemarks}
                   onChange={() => togglePermKey("canModifyRemarks")}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-blue-600 rounded"
                 />
               </label>
 
@@ -341,7 +263,7 @@ export function MeasurementToolbar({
                   type="checkbox"
                   checked={currentPerms.canAddRows}
                   onChange={() => togglePermKey("canAddRows")}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-blue-600 rounded"
                 />
               </label>
 
@@ -351,7 +273,7 @@ export function MeasurementToolbar({
                   type="checkbox"
                   checked={currentPerms.canDeleteRows}
                   onChange={() => togglePermKey("canDeleteRows")}
-                  className="w-4 h-4 text-emerald-600 rounded"
+                  className="w-4 h-4 text-blue-600 rounded"
                 />
               </label>
             </div>
@@ -359,7 +281,7 @@ export function MeasurementToolbar({
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setShowPermissionsModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
               >
                 Done
               </button>

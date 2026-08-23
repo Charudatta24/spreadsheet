@@ -190,7 +190,7 @@ function TrashTab({ uid, displayName }: { uid: string; displayName: string }) {
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5 mb-1">
-                                            <Ruler size={13} className="text-emerald-600 shrink-0" />
+                                            <Ruler size={13} className="text-blue-600 shrink-0" />
                                             <p className="font-bold text-sm text-sheet-text truncate">{sheet.title}</p>
                                         </div>
                                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
@@ -221,7 +221,7 @@ function TrashTab({ uid, displayName }: { uid: string; displayName: string }) {
                                 <div className="flex items-center gap-2 pt-1">
                                     <button
                                         onClick={() => setConfirmRestoreId(sheet.id)}
-                                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm"
+                                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm"
                                     >
                                         <RotateCcw size={13} />
                                         Restore
@@ -245,7 +245,7 @@ function TrashTab({ uid, displayName }: { uid: string; displayName: string }) {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white border border-sheet-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
                         <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                                 <RotateCcw size={20} />
                             </div>
                             <div>
@@ -266,7 +266,7 @@ function TrashTab({ uid, displayName }: { uid: string; displayName: string }) {
                             <button
                                 onClick={() => handleRestore(confirmRestoreId)}
                                 disabled={actionLoading}
-                                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm disabled:opacity-50 flex items-center gap-2"
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm disabled:opacity-50 flex items-center gap-2"
                             >
                                 {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
                                 Restore
@@ -753,7 +753,7 @@ function AccountPageContent() {
                         {/* Section 2: Mathematical Formulas */}
                         <div className="bg-white rounded-2xl border border-sheet-border p-5 shadow-sm space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                                     <Calculator size={20} />
                                 </div>
                                 <div>
@@ -767,7 +767,7 @@ function AccountPageContent() {
                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs font-bold text-slate-800">1. Local SQF (Square Feet)</span>
-                                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Local</span>
+                                        <span className="text-[11px] font-mono font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Local</span>
                                     </div>
                                     <p className="text-xs font-mono font-semibold text-slate-700 bg-white p-2 rounded border border-slate-200">
                                         SQF = (Length in inches × Height in inches) ÷ 144

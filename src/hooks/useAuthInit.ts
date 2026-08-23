@@ -8,7 +8,7 @@ import { getUserProfile } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/types";
 
 export function useAuthInit(): void {
-  const { setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType, setRequiresFactoryName } = useAuthStore();
+  const { setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType, setRequiresFactoryName, setRequiresNickname } = useAuthStore();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -72,11 +72,19 @@ export function useAuthInit(): void {
           } else {
             setRequiresFactoryName(false);
           }
+
+          // Require nickname for ALL users (new and existing) who haven't set one yet
+          if (!effectiveNickname) {
+            setRequiresNickname(true);
+          } else {
+            setRequiresNickname(false);
+          }
         } else {
           setRequiresName(false);
           setRequiresAccountType(false);
           setRequiresWorkType(false);
           setRequiresFactoryName(false);
+          setRequiresNickname(false);
         }
         
         setInitialized(true);
@@ -85,10 +93,11 @@ export function useAuthInit(): void {
         setRequiresName(false);
         setRequiresAccountType(false);
         setRequiresFactoryName(false);
+        setRequiresNickname(false);
         setInitialized(true);
       }
     });
 
     return unsub;
-  }, [setUser, setInitialized, setRequiresName, setRequiresAccountType]);
+  }, [setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType, setRequiresFactoryName, setRequiresNickname]);
 }

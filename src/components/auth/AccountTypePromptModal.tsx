@@ -107,7 +107,7 @@ export function AccountTypePromptModal() {
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-[min(95vw,460px)] w-full p-6 border border-sheet-border/50 space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-sheet-text mb-1">
+          <h2 className="text-xl font-extrabold text-slate-900 mb-1 font-['Cinzel','Playfair_Display',serif]">
             {isWorkTypeOnly ? "Select your Work Type" : "Select your account type"}
           </h2>
           <p className="text-xs text-sheet-muted">
@@ -116,9 +116,9 @@ export function AccountTypePromptModal() {
         </div>
 
         {savedMessage ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center space-y-2">
-            <Check size={28} className="mx-auto text-emerald-600 animate-bounce" />
-            <p className="text-xs font-semibold text-emerald-800">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center space-y-2">
+            <Check size={28} className="mx-auto text-blue-600 animate-bounce" />
+            <p className="text-xs font-semibold text-blue-800">
               Your profile selection has been saved.
             </p>
           </div>
@@ -131,11 +131,11 @@ export function AccountTypePromptModal() {
                 onClick={() => setSelectedWorkType("cutting")}
                 className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${
                   selectedWorkType === "cutting"
-                    ? "border-indigo-500 bg-indigo-50/50 text-indigo-700 ring-2 ring-indigo-500/30"
+                    ? "border-blue-500 bg-blue-50/50 text-blue-700 ring-2 ring-blue-500/30"
                     : "border-sheet-border hover:bg-slate-50 text-slate-700"
                 }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedWorkType === "cutting" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedWorkType === "cutting" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
                   <Scissors size={24} />
                 </div>
                 <span className="font-bold text-sm">Cutting</span>
@@ -146,11 +146,11 @@ export function AccountTypePromptModal() {
                 onClick={() => setSelectedWorkType("polish")}
                 className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${
                   selectedWorkType === "polish"
-                    ? "border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-2 ring-emerald-500/30"
+                    ? "border-blue-500 bg-blue-50/50 text-blue-700 ring-2 ring-blue-500/30"
                     : "border-sheet-border hover:bg-slate-50 text-slate-700"
                 }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedWorkType === "polish" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedWorkType === "polish" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
                   <Sparkles size={24} />
                 </div>
                 <span className="font-bold text-sm">Polish</span>
@@ -163,7 +163,7 @@ export function AccountTypePromptModal() {
               type="button"
               disabled={loading || !selectedWorkType}
               onClick={handleConfirmWorkTypeOnly}
-              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 text-xs uppercase tracking-wider"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20 text-xs uppercase tracking-wider"
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
               {loading ? "Saving..." : "Confirm Work Type"}
@@ -181,11 +181,11 @@ export function AccountTypePromptModal() {
                 }}
                 className={`p-5 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${
                   selectedType === "owner"
-                    ? "border-emerald-500 bg-emerald-50/50 text-emerald-700 ring-2 ring-emerald-500/30"
+                    ? "border-blue-500 bg-blue-50/50 text-blue-700 ring-2 ring-blue-500/30"
                     : "border-sheet-border hover:bg-slate-50 text-slate-700"
                 }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedType === "owner" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedType === "owner" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
                   <ShieldCheck size={24} />
                 </div>
                 <span className="font-bold text-sm">Owner</span>
@@ -219,7 +219,7 @@ export function AccountTypePromptModal() {
                     onClick={() => setSelectedWorkType("cutting")}
                     className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
                       selectedWorkType === "cutting"
-                        ? "border-indigo-500 bg-indigo-500 text-white shadow-sm"
+                        ? "border-blue-500 bg-blue-600 text-white shadow-sm"
                         : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                     }`}
                   >
@@ -232,7 +232,7 @@ export function AccountTypePromptModal() {
                     onClick={() => setSelectedWorkType("polish")}
                     className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
                       selectedWorkType === "polish"
-                        ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
+                        ? "border-blue-500 bg-blue-600 text-white shadow-sm"
                         : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                     }`}
                   >
@@ -249,7 +249,7 @@ export function AccountTypePromptModal() {
               type="button"
               disabled={loading || !selectedType || (selectedType === "non-owner" && !selectedWorkType)}
               onClick={handleConfirmAccountType}
-              className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/20 text-xs uppercase tracking-wider"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20 text-xs uppercase tracking-wider"
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
               {loading ? "Saving..." : "Confirm Selection"}

@@ -49,8 +49,8 @@ export function AppSwitcher({ currentApp }: AppSwitcherProps) {
       label: <><span className="text-slate-900 font-extrabold uppercase font-heading font-sans">Measurement</span> <span className="text-blue-600 font-extrabold uppercase font-heading font-sans">Sheets</span></>,
       href: "/measurement-sheets",
       icon: Ruler,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-500/10",
+      color: "text-blue-600",
+      bgColor: "bg-blue-500/10",
       isComingSoon: false,
     },
   ];
