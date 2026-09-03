@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { MeasurementSheet, PersonMeasurement } from "@/types";
+import { useAuthStore } from "@/lib/sync/authStore";
 
 /**
  * Calculates row C or E value cleanly.
@@ -130,6 +131,19 @@ export function calculateSheetTotal(sheet: MeasurementSheet): number {
 export function fmt2(n: number): string {
   const truncated = Math.trunc(n * 100) / 100;
   return truncated.toFixed(2);
+}
+
+/**
+ * Standard 2-decimal rounding with EPSILON protection against float binary imprecision
+ * e.g. 69.44 * 120 = 8332.799999999999 -> round2 produces 8332.8
+ */
+export function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+export function fmt2Val(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return "0.00";
+  return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 }
 
 import jsPDF from "jspdf";
@@ -270,7 +284,11 @@ export function exportMeasurementToExcel(sheet: MeasurementSheet) {
 /**
  * Export MeasurementSheet to PDF file with 30-row pagination, subtotals, Factory Name header, and grand total.
  */
-export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverride?: string) {
+export function exportMeasurementToPDF(
+  sheet: MeasurementSheet,
+  factoryNameOverride?: string,
+  phoneNumberOverride?: string
+) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 
   // Resolve Factory Name from argument, sheet property, or fallback
@@ -280,6 +298,15 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
     (typeof window !== "undefined" && (window as any).__COLAB_FACTORY_NAME__) ||
     "VALLEY STONE"
   ).toUpperCase();
+
+  // Resolve phone number from argument, sheet property, or auth store
+  let phone = phoneNumberOverride || (sheet as any).phoneNumber;
+  if (!phone && typeof window !== "undefined") {
+    try {
+      phone = useAuthStore.getState().user?.phoneNumber;
+    } catch (_) {}
+  }
+  const subText = phone ? `Budawada, Chimakurthy, ${phone}` : "Budawada, Chimakurthy";
 
   let isFirstPage = true;
   let overallGrandTotalSqf = 0;
@@ -341,7 +368,7 @@ export function exportMeasurementToPDF(sheet: MeasurementSheet, factoryNameOverr
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139); // Slate-500
-      doc.text("GRANITE & MARBLE MEASUREMENT SHEET", 42, 54);
+      doc.text(subText, 42, 54);
 
       // Right Header Badge Box
       doc.setFillColor(15, 23, 42);
@@ -625,4 +652,159 @@ export function exportMeasurementToCSV(sheet: MeasurementSheet, personIndex = 0)
 
 function sanitizeSheetName(name: string): string {
   return name.replace(/[:\\/?*\[\]]/g, "").slice(0, 31) || "Sheet1";
+}
+
+// ─── Calculation Sheet PDF Export ─────────────────────────────────────────────
+
+import type { CalculationSheet } from "@/types";
+
+/**
+ * Generates and directly downloads a PDF for a CalculationSheet.
+ * Uses the same jsPDF + autoTable setup as exportMeasurementToPDF.
+ */
+export function exportCalculationToPDF(
+  sheet: CalculationSheet,
+  phoneNumberOverride?: string
+): void {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  let y = 14;
+
+  // Resolve phone number from argument, sheet property, or auth store
+  let phone = phoneNumberOverride || (sheet as any).phoneNumber;
+  if (!phone && typeof window !== "undefined") {
+    try {
+      phone = useAuthStore.getState().user?.phoneNumber;
+    } catch (_) {}
+  }
+  const subText = phone ? `Budawada, Chimakurthy, ${phone}` : "Budawada, Chimakurthy";
+
+  // ── Factory Name ──────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(sheet.factoryName || "Factory", pageW / 2, y, { align: "center" });
+  y += 7;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text(subText, pageW / 2, y, { align: "center" });
+  y += 8;
+
+  // ── Divider ───────────────────────────────────────────────────────────────
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, y, pageW - margin, y);
+  y += 6;
+
+  // ── Sheet Information ────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(26, 115, 232); // brand blue
+  doc.text("Sheet Information", margin, y);
+  y += 5;
+
+  const createdDate = (() => {
+    try {
+      const ms = sheet.createdAt?.toMillis?.() ?? sheet.createdAt ?? Date.now();
+      const d = new Date(ms);
+      return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    } catch {
+      return "—";
+    }
+  })();
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: "plain",
+    styles: { fontSize: 9, cellPadding: 1.5, textColor: [15, 23, 42] },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, textColor: [71, 85, 105] }, 1: { fontStyle: "normal" } },
+    body: [
+      ["Sheet Name", sheet.sheetName],
+      ["Date of Creation", createdDate],
+      ["Total SQF", fmt2(sheet.totalSqf)],
+    ],
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  // ── Calculation Summary Table ───────────────────────────────────────────
+  const underSqf2 = parseFloat(fmt2(sheet.underTotalSqf));
+  const underVal = sheet.underValue != null ? round2(sheet.underValue) : null;
+  const underTotal = (underVal != null) ? round2(underSqf2 * underVal) : (sheet.underTotalValue != null ? round2(sheet.underTotalValue) : null);
+
+  const belowSqf2 = parseFloat(fmt2(sheet.belowTotalSqf));
+  const belowVal = sheet.belowValue != null ? round2(sheet.belowValue) : null;
+  const belowTotal = (belowVal != null) ? round2(belowSqf2 * belowVal) : (sheet.belowTotalValue != null ? round2(sheet.belowTotalValue) : null);
+
+  const totalSlabs = sheet.underSlabCount + sheet.belowSlabCount;
+  const totalSqfVal = round2(underSqf2 + belowSqf2);
+  const grandTotalVal = (underTotal != null || belowTotal != null) ? round2((underTotal ?? 0) + (belowTotal ?? 0)) : null;
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: "grid",
+    headStyles: { fillColor: [239, 246, 255], textColor: [26, 115, 232], fontStyle: "bold", fontSize: 9 },
+    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] },
+    columnStyles: {
+      0: { fontStyle: "bold", textColor: [15, 23, 42] },
+      1: { halign: "center" },
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right", fontStyle: "bold" },
+    },
+    head: [["Category", "No. of Slabs", "Total SQF", "Value / SQF", "Total Value"]],
+    body: [
+      [
+        "Undersize",
+        String(sheet.underSlabCount),
+        fmt2(underSqf2),
+        underVal != null ? fmt2Val(underVal) : "—",
+        underTotal != null ? fmt2Val(underTotal) : "—",
+      ],
+      [
+        "Below Undersize",
+        String(sheet.belowSlabCount),
+        fmt2(belowSqf2),
+        belowVal != null ? fmt2Val(belowVal) : "—",
+        belowTotal != null ? fmt2Val(belowTotal) : "—",
+      ],
+      [
+        "Total",
+        String(totalSlabs),
+        fmt2(totalSqfVal),
+        "—",
+        grandTotalVal != null ? fmt2Val(grandTotalVal) : "—",
+      ],
+    ],
+    footStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: "bold" },
+  });
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  const pageCount = (doc.internal as any).getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Generated by MeasureSheets  •  Page ${i} of ${pageCount}`,
+      pageW / 2,
+      doc.internal.pageSize.getHeight() - 6,
+      { align: "center" }
+    );
+  }
+
+  // Direct download — no preview window
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Calculation_${sheet.sheetName.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

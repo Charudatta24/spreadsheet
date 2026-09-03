@@ -8,7 +8,16 @@ import { getUserProfile } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/types";
 
 export function useAuthInit(): void {
-  const { setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType, setRequiresFactoryName, setRequiresNickname } = useAuthStore();
+  const {
+    setUser,
+    setInitialized,
+    setRequiresName,
+    setRequiresAccountType,
+    setRequiresWorkType,
+    setRequiresFactoryName,
+    setRequiresNickname,
+    setRequiresPhoneNumber,
+  } = useAuthStore();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -31,6 +40,7 @@ export function useAuthInit(): void {
         const effectiveDisplayName = savedProfile?.displayName || sameUserLocal?.displayName || firebaseUser.displayName || "User";
         const effectiveNickname = savedProfile?.nickname || sameUserLocal?.nickname;
         const effectiveFactoryName = savedProfile?.factoryName || sameUserLocal?.factoryName;
+        const effectivePhoneNumber = savedProfile?.phoneNumber || sameUserLocal?.phoneNumber;
 
         // Set basic user info first to unblock UI
         const baseUser: AppUser = {
@@ -42,6 +52,7 @@ export function useAuthInit(): void {
           isAnonymous: firebaseUser.isAnonymous,
           nickname: effectiveNickname,
           factoryName: effectiveFactoryName,
+          phoneNumber: effectivePhoneNumber,
           accountType: effectiveAccountType,
           workType: effectiveWorkType,
         };
@@ -79,12 +90,20 @@ export function useAuthInit(): void {
           } else {
             setRequiresNickname(false);
           }
+
+          // Require phone number for OWNER accounts (new and existing) who haven't set one yet
+          if (effectiveAccountType === "owner" && !effectivePhoneNumber) {
+            setRequiresPhoneNumber(true);
+          } else {
+            setRequiresPhoneNumber(false);
+          }
         } else {
           setRequiresName(false);
           setRequiresAccountType(false);
           setRequiresWorkType(false);
           setRequiresFactoryName(false);
           setRequiresNickname(false);
+          setRequiresPhoneNumber(false);
         }
         
         setInitialized(true);
@@ -94,10 +113,20 @@ export function useAuthInit(): void {
         setRequiresAccountType(false);
         setRequiresFactoryName(false);
         setRequiresNickname(false);
+        setRequiresPhoneNumber(false);
         setInitialized(true);
       }
     });
 
     return unsub;
-  }, [setUser, setInitialized, setRequiresName, setRequiresAccountType, setRequiresWorkType, setRequiresFactoryName, setRequiresNickname]);
+  }, [
+    setUser,
+    setInitialized,
+    setRequiresName,
+    setRequiresAccountType,
+    setRequiresWorkType,
+    setRequiresFactoryName,
+    setRequiresNickname,
+    setRequiresPhoneNumber,
+  ]);
 }

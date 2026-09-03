@@ -13,6 +13,7 @@ export function AccountTypePromptModal() {
     setRequiresAccountType,
     requiresWorkType,
     setRequiresWorkType,
+    setRequiresPhoneNumber,
     setUser,
   } = useAuthStore();
 
@@ -64,6 +65,9 @@ export function AccountTypePromptModal() {
       setTimeout(() => {
         setRequiresAccountType(false);
         setRequiresWorkType(false);
+        if (selectedType === "owner" && !currentUser.phoneNumber) {
+          setRequiresPhoneNumber(true);
+        }
       }, 1500);
     } catch (err) {
       console.error(err);

@@ -28,6 +28,8 @@ import type {
   CellData,
   ColWidths,
   RowHeights,
+  MeasurementSheet,
+  CalculationSheet,
 } from "@/types";
 import { nanoid } from "nanoid";
 
@@ -494,6 +496,7 @@ export async function getUserProfile(uid: string): Promise<{
   email?: string | null;
   nickname?: string;
   factoryName?: string;
+  phoneNumber?: string;
   accountType?: import("@/types").AccountType;
   workType?: import("@/types").WorkType;
 } | null> {
@@ -531,6 +534,7 @@ export async function setUserProfile(
     email?: string | null;
     nickname?: string;
     factoryName?: string;
+    phoneNumber?: string;
     accountType?: import("@/types").AccountType;
     workType?: import("@/types").WorkType;
   }
@@ -540,6 +544,7 @@ export async function setUserProfile(
   if (profile.email !== undefined) data.email = profile.email;
   if (profile.nickname !== undefined) data.nickname = profile.nickname;
   if (profile.factoryName !== undefined) data.factoryName = profile.factoryName;
+  if (profile.phoneNumber !== undefined) data.phoneNumber = profile.phoneNumber;
   if (profile.accountType !== undefined) data.accountType = profile.accountType;
   if (profile.workType !== undefined) data.workType = profile.workType;
 
@@ -613,4 +618,157 @@ export async function getAllRegisteredUsers(): Promise<{ uid: string; displayNam
     }
   }
   return users;
+}
+
+// ─── Calculation Sheets ───────────────────────────────────────────────────────
+
+const CALC_COLLECTION = "calculationSheets";
+
+/**
+ * Fetches all national measurement sheets the user can access (owns or participates in).
+ */
+export async function getNationalMeasurementSheets(
+  userId: string
+): Promise<MeasurementSheet[]> {
+  const sheetsMap = new Map<string, MeasurementSheet>();
+
+  const qOwner = query(
+    collection(db, "measurementSheets"),
+    where("userId", "==", userId),
+    where("locationType", "==", "national")
+  );
+  const qPart = query(
+    collection(db, "measurementSheets"),
+    where("participantIds", "array-contains", userId),
+    where("locationType", "==", "national")
+  );
+
+  const [snapOwner, snapPart] = await Promise.all([getDocs(qOwner), getDocs(qPart)]);
+
+  for (const d of [...snapOwner.docs, ...snapPart.docs]) {
+    if (!sheetsMap.has(d.id)) {
+      const data = { id: d.id, ...d.data() } as MeasurementSheet;
+      // Exclude soft-deleted sheets
+      if (!data.deleted) sheetsMap.set(d.id, data);
+    }
+  }
+
+  const sheets = Array.from(sheetsMap.values());
+  sheets.sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? a.createdAt ?? 0;
+    const tb = b.createdAt?.toMillis?.() ?? b.createdAt ?? 0;
+    return tb - ta;
+  });
+  return sheets;
+}
+
+/**
+ * Creates a new calculation sheet from a national measurement sheet.
+ * The original measurement sheet is NOT modified.
+ * Returns the new calculation sheet ID.
+ */
+export async function createCalculationSheet(
+  userId: string,
+  factoryName: string,
+  sheet: MeasurementSheet,
+  underSlabCount: number,
+  underTotalSqf: number,
+  belowSlabCount: number,
+  belowTotalSqf: number,
+  totalSqf: number
+): Promise<string> {
+  const now = Timestamp.now();
+  const expiresAt = Timestamp.fromMillis(now.toMillis() + 3 * 24 * 60 * 60 * 1000);
+
+  const data: Omit<CalculationSheet, "id"> = {
+    userId,
+    sourceMeasurementSheetId: sheet.id,
+    sheetName: sheet.title,
+    factoryName,
+    createdAt: serverTimestamp(),
+    expiresAt,
+    totalSqf,
+    underSlabCount,
+    underTotalSqf,
+    underValue: null,
+    underTotalValue: null,
+    belowSlabCount,
+    belowTotalSqf,
+    belowValue: null,
+    belowTotalValue: null,
+  };
+
+  const docRef = await addDoc(collection(db, CALC_COLLECTION), data);
+  return docRef.id;
+}
+
+/**
+ * Real-time listener for a user's calculation sheets.
+ * Filters out expired sheets client-side for safety.
+ */
+export function subscribeCalculationSheets(
+  userId: string,
+  callback: (sheets: CalculationSheet[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, CALC_COLLECTION),
+    where("userId", "==", userId)
+  );
+
+  return onSnapshot(q, (snap) => {
+    const now = Date.now();
+    const sheets: CalculationSheet[] = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as CalculationSheet))
+      .filter((s) => {
+        const exp = s.expiresAt?.toMillis?.() ?? s.expiresAt ?? 0;
+        return exp > now;
+      });
+    sheets.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() ?? a.createdAt ?? 0;
+      const tb = b.createdAt?.toMillis?.() ?? b.createdAt ?? 0;
+      return tb - ta;
+    });
+    callback(sheets);
+  });
+}
+
+/**
+ * Fetches a single calculation sheet by ID.
+ */
+export async function getCalculationSheet(id: string): Promise<CalculationSheet | null> {
+  const snap = await getDoc(doc(db, CALC_COLLECTION, id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as CalculationSheet;
+}
+
+/**
+ * Saves the submitted under/below values and their totals.
+ */
+export async function updateCalculationValues(
+  id: string,
+  updates: {
+    underValue?: number | null;
+    underTotalValue?: number | null;
+    belowValue?: number | null;
+    belowTotalValue?: number | null;
+  }
+): Promise<void> {
+  await updateDoc(doc(db, CALC_COLLECTION, id), updates);
+}
+
+/**
+ * Deletes all expired calculation sheets for a user (cleanup on page load).
+ */
+export async function deleteExpiredCalculationSheets(userId: string): Promise<void> {
+  const q = query(collection(db, CALC_COLLECTION), where("userId", "==", userId));
+  const snap = await getDocs(q);
+  const now = Date.now();
+  const deletions: Promise<void>[] = [];
+  for (const d of snap.docs) {
+    const exp = d.data().expiresAt?.toMillis?.() ?? d.data().expiresAt ?? 0;
+    if (exp <= now) {
+      deletions.push(deleteDoc(d.ref));
+    }
+  }
+  await Promise.all(deletions);
 }

@@ -172,6 +172,8 @@ export type AppUser = {
   nickname?: string;
   /** Optional Factory Name set by user, persisted in Firestore */
   factoryName?: string;
+  /** Optional Phone Number for owner accounts, persisted in Firestore */
+  phoneNumber?: string;
   /** True if the user needs to provide their name for the first time */
   requiresName?: boolean;
   /** Account type: owner or non-owner */
@@ -180,6 +182,7 @@ export type AppUser = {
   workType?: WorkType;
   requiresWorkType?: boolean;
   requiresFactoryName?: boolean;
+  requiresPhoneNumber?: boolean;
 };
 
 // ─── Selection ───────────────────────────────────────────────────────────────
@@ -299,3 +302,25 @@ export type MeasurementSheet = {
   cuttingData?: CuttingData;
 };
 
+// ─── Calculation Sheets ───────────────────────────────────────────────────────
+
+export type CalculationSheet = {
+  id: string;
+  userId: string;                    // owner UID
+  sourceMeasurementSheetId: string;  // original national sheet ID (read-only reference)
+  sheetName: string;
+  factoryName: string;
+  createdAt: any;                    // Firestore serverTimestamp
+  expiresAt: any;                    // createdAt + 3 days (Firestore Timestamp)
+  totalSqf: number;
+  // Undersize: Length (A) >= 44
+  underSlabCount: number;
+  underTotalSqf: number;
+  underValue: number | null;
+  underTotalValue: number | null;
+  // Below Undersize: Length (A) < 44
+  belowSlabCount: number;
+  belowTotalSqf: number;
+  belowValue: number | null;
+  belowTotalValue: number | null;
+};

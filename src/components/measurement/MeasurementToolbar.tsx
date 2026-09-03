@@ -174,7 +174,7 @@ export function MeasurementToolbar({
 
           {/* PDF Export Only */}
           <button
-            onClick={() => exportMeasurementToPDF(sheet, user?.factoryName)}
+            onClick={() => exportMeasurementToPDF(sheet, user?.factoryName, user?.phoneNumber)}
             className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
             title="Download as PDF"
           >

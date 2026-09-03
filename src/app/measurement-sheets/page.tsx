@@ -1285,7 +1285,7 @@ function MeasurementDashboardContent() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          exportMeasurementToPDF(s, user?.factoryName);
+                          exportMeasurementToPDF(s, user?.factoryName, user?.phoneNumber);
                         }}
                         className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-red-600 font-bold text-xs border border-slate-200 hover:border-red-200 transition-all active:scale-95"
                         title="Download PDF"
@@ -1323,7 +1323,7 @@ function MeasurementDashboardContent() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          exportMeasurementToPDF(s, user?.factoryName);
+                          exportMeasurementToPDF(s, user?.factoryName, user?.phoneNumber);
                         }}
                         className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-red-600 font-bold text-xs border border-slate-200 hover:border-red-200 transition-all active:scale-95"
                         title="Download PDF"

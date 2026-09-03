@@ -11,6 +11,7 @@ interface AuthState {
   requiresWorkType: boolean;
   requiresFactoryName: boolean;
   requiresNickname: boolean;
+  requiresPhoneNumber: boolean;
   setUser: (user: AppUser | null) => void;
   setInitialized: (v: boolean) => void;
   setRequiresName: (v: boolean) => void;
@@ -18,6 +19,7 @@ interface AuthState {
   setRequiresWorkType: (v: boolean) => void;
   setRequiresFactoryName: (v: boolean) => void;
   setRequiresNickname: (v: boolean) => void;
+  setRequiresPhoneNumber: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       requiresWorkType: false,
       requiresFactoryName: false,
       requiresNickname: false,
+      requiresPhoneNumber: false,
       setUser: (user) => {
         if (typeof window !== "undefined") {
           try {
@@ -48,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
       setRequiresWorkType: (requiresWorkType) => set({ requiresWorkType }),
       setRequiresFactoryName: (requiresFactoryName) => set({ requiresFactoryName }),
       setRequiresNickname: (requiresNickname) => set({ requiresNickname }),
+      setRequiresPhoneNumber: (requiresPhoneNumber) => set({ requiresPhoneNumber }),
     }),
     {
       name: "collabsheet-auth",
@@ -58,6 +62,7 @@ export const useAuthStore = create<AuthState>()(
         requiresWorkType: state.requiresWorkType,
         requiresFactoryName: state.requiresFactoryName,
         requiresNickname: state.requiresNickname,
+        requiresPhoneNumber: state.requiresPhoneNumber,
       }),
     }
   )
