@@ -13,7 +13,10 @@ export function AccountTypePromptModal() {
     setRequiresAccountType,
     requiresWorkType,
     setRequiresWorkType,
+    setRequiresFactoryName,
     setRequiresPhoneNumber,
+    setRequiresNickname,
+    setRequiresName,
     setUser,
   } = useAuthStore();
 
@@ -65,8 +68,18 @@ export function AccountTypePromptModal() {
       setTimeout(() => {
         setRequiresAccountType(false);
         setRequiresWorkType(false);
-        if (selectedType === "owner" && !currentUser.phoneNumber) {
-          setRequiresPhoneNumber(true);
+        if (selectedType === "owner") {
+          if (!currentUser.factoryName) {
+            setRequiresFactoryName(true);
+          } else if (!currentUser.phoneNumber) {
+            setRequiresPhoneNumber(true);
+          } else if (!currentUser.nickname) {
+            setRequiresNickname(true);
+          }
+        }
+        // Non-owners: only ask for name if missing
+        if (!currentUser.displayName) {
+          setRequiresName(true);
         }
       }, 1500);
     } catch (err) {
@@ -99,6 +112,9 @@ export function AccountTypePromptModal() {
 
       setTimeout(() => {
         setRequiresWorkType(false);
+        if (!currentUser.displayName) {
+          setRequiresName(true);
+        }
       }, 1500);
     } catch (err) {
       console.error(err);

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, UserCircle, X, User, Trash2, Calculator } from "lucide-react";
+import { FileSpreadsheet, MessageSquare, Ruler, ArrowRight, Settings2, LogOut, Users, UserCircle, X, User, Trash2, Calculator, BookOpen } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
@@ -112,7 +112,7 @@ export default function AppHub() {
             <span className="text-slate-900">Choose Your</span> <span className="text-blue-600">Workspace</span>
           </h1>
         </div>
-        <div className={`grid grid-cols-1 ${user?.accountType === "non-owner" ? "max-w-md mx-auto" : "md:grid-cols-2 lg:grid-cols-4"} gap-6`}>
+        <div className={`grid grid-cols-1 ${user?.accountType === "non-owner" ? "max-w-md mx-auto" : "md:grid-cols-2 lg:grid-cols-3"} gap-6`}>
           {user?.accountType !== "non-owner" && (
             <>
               <Link href="/dashboard"
@@ -174,6 +174,18 @@ export default function AppHub() {
               <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Calculation</span><ArrowRight size={16} /></div>
             </Link>
           )}
+          {/* AI Accounting Notepad card — beside calculation */}
+          <Link href="/accounting"
+            className="group relative h-64 rounded-2xl border border-sheet-border bg-white/60 hover:bg-white hover:border-blue-500/30 hover:shadow-2xl transition-all duration-300 p-6 flex flex-col justify-between overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity"><BookOpen size={120} className="text-blue-600" /></div>
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300"><BookOpen size={28} /></div>
+              <h2 className="text-xl font-extrabold uppercase tracking-wide font-['Cinzel','Playfair_Display',serif]">
+                <span className="text-slate-900">AI </span><span className="text-blue-600">Accounting</span>
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs group-hover:gap-3 transition-all"><span>Open Notepad</span><ArrowRight size={16} /></div>
+          </Link>
         </div>
       </main>
 

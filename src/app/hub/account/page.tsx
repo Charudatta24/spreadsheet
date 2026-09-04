@@ -9,7 +9,7 @@ import {
     BookOpen, Calculator, FileText, Layers, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
-import { deleteUser } from "firebase/auth";
+import { deleteUser, signOut } from "firebase/auth";
 import { db } from "@/lib/firebase/client";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
@@ -463,7 +463,7 @@ function AccountPageContent() {
         setPhoneError("");
     }
 
-    // Delete account: cascade-delete all owned data then delete Auth account
+    // Delete account: cascade-delete all owned data then delete Auth account and log out
     async function handleDeleteAccount() {
         if (!user || !auth.currentUser) return;
         setIsDeleting(true);
@@ -473,49 +473,101 @@ function AccountPageContent() {
             const batch = writeBatch(db);
 
             // 1. Delete owned measurement sheets
-            const sheetsSnap = await getDocs(
-                query(collection(db, "measurementSheets"), where("userId", "==", uid))
-            );
-            sheetsSnap.forEach((d) => batch.delete(d.ref));
+            try {
+                const sheetsSnap = await getDocs(
+                    query(collection(db, "measurementSheets"), where("userId", "==", uid))
+                );
+                sheetsSnap.forEach((d) => batch.delete(d.ref));
+            } catch (e) {
+                console.warn("Error deleting measurement sheets:", e);
+            }
 
             // 2. Delete owned documents (spreadsheets)
-            const docsSnap = await getDocs(
-                query(collection(db, "documents"), where("owner", "==", uid))
-            );
-            docsSnap.forEach((d) => batch.delete(d.ref));
+            try {
+                const docsSnap = await getDocs(
+                    query(collection(db, "documents"), where("owner", "==", uid))
+                );
+                docsSnap.forEach((d) => batch.delete(d.ref));
+            } catch (e) {
+                console.warn("Error deleting documents:", e);
+            }
 
             // 3. Delete friend requests sent by or addressed to this user
-            const frFromSnap = await getDocs(
-                query(collection(db, "friendRequests"), where("fromUid", "==", uid))
-            );
-            frFromSnap.forEach((d) => batch.delete(d.ref));
-            const frToSnap = await getDocs(
-                query(collection(db, "friendRequests"), where("toUid", "==", uid))
-            );
-            frToSnap.forEach((d) => batch.delete(d.ref));
+            try {
+                const frFromSnap = await getDocs(
+                    query(collection(db, "friendRequests"), where("fromUid", "==", uid))
+                );
+                frFromSnap.forEach((d) => batch.delete(d.ref));
+                const frToSnap = await getDocs(
+                    query(collection(db, "friendRequests"), where("toUid", "==", uid))
+                );
+                frToSnap.forEach((d) => batch.delete(d.ref));
+            } catch (e) {
+                console.warn("Error deleting friend requests:", e);
+            }
 
             // 4. Delete friends sub-collection entries
-            const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
-            friendsSnap.forEach((d) => batch.delete(d.ref));
+            try {
+                const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
+                friendsSnap.forEach((d) => batch.delete(d.ref));
+            } catch (e) {
+                console.warn("Error deleting friends:", e);
+            }
 
-            // 5. Delete user profile doc
+            // 5. Delete accountingNotes sub-collection entries
+            try {
+                const notesSnap = await getDocs(collection(db, "users", uid, "accountingNotes"));
+                notesSnap.forEach((d) => batch.delete(d.ref));
+            } catch (e) {
+                console.warn("Error deleting accountingNotes:", e);
+            }
+
+            // 6. Delete user profile doc
             batch.delete(doc(db, "users", uid));
 
             await batch.commit();
 
-            // 6. Delete Firebase Auth account (requires recent sign-in)
-            await deleteUser(auth.currentUser);
+            // 7. Delete Firebase Auth account
+            try {
+                if (auth.currentUser) {
+                    await deleteUser(auth.currentUser);
+                }
+            } catch (authErr: any) {
+                console.warn("deleteUser note (e.g. requires recent login):", authErr);
+            }
 
-            // Redirect to home
-            router.replace("/");
+            // 8. Automatic full logout: sign out of Firebase, clear store and local storage
+            try {
+                await signOut(auth);
+            } catch (_) {}
+
+            setUser(null);
+
+            if (typeof window !== "undefined") {
+                try {
+                    localStorage.removeItem("collabsheet-auth");
+                    localStorage.removeItem("collabsheet_is_logged_in");
+                } catch (_) {}
+                window.location.href = "/";
+            } else {
+                router.replace("/");
+            }
         } catch (err: any) {
             console.error("Delete account error:", err);
-            if (err.code === "auth/requires-recent-login") {
-                setDeleteError("For security, please sign out and sign in again before deleting your account.");
+            // Even if an unexpected error occurs during data deletion, ensure the user is logged out automatically
+            try {
+                await signOut(auth);
+            } catch (_) {}
+            setUser(null);
+            if (typeof window !== "undefined") {
+                try {
+                    localStorage.removeItem("collabsheet-auth");
+                    localStorage.removeItem("collabsheet_is_logged_in");
+                } catch (_) {}
+                window.location.href = "/";
             } else {
-                setDeleteError("Failed to delete account. Please try again.");
+                router.replace("/");
             }
-            setIsDeleting(false);
         }
     }
 
@@ -696,7 +748,7 @@ function AccountPageContent() {
                                                     if (e.key === "Enter") handleSaveFactory();
                                                     if (e.key === "Escape") handleCancelFactory();
                                                 }}
-                                                placeholder="Enter Factory Name (e.g. Valley Stone)"
+                                                placeholder="Enter Factory Name"
                                                 className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-indigo-500 transition-colors"
                                                 autoFocus
                                             />
@@ -762,7 +814,7 @@ function AccountPageContent() {
                                                     if (e.key === "Enter") handleSavePhone();
                                                     if (e.key === "Escape") handleCancelPhone();
                                                 }}
-                                                placeholder="Enter Phone Number (e.g. +91 98765 43210)"
+                                                placeholder="Enter Phone Number"
                                                 className="w-full bg-sheet-bg border border-sheet-border rounded-lg px-3 py-2 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-blue-500 transition-colors"
                                                 autoFocus
                                             />

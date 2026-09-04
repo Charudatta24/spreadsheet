@@ -6,12 +6,31 @@ import { setUserProfile } from "@/lib/firebase/firestore";
 import { Check, Loader2 } from "lucide-react";
 
 export function NamePromptModal() {
-  const { user, requiresName, setRequiresName, setUser } = useAuthStore();
+  const {
+    user,
+    requiresName,
+    setRequiresName,
+    requiresAccountType,
+    requiresWorkType,
+    requiresFactoryName,
+    requiresPhoneNumber,
+    requiresNickname,
+    setUser,
+  } = useAuthStore();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  if (!requiresName || !user) return null;
+  if (
+    !requiresName ||
+    !user ||
+    requiresAccountType ||
+    requiresWorkType ||
+    requiresFactoryName ||
+    requiresPhoneNumber ||
+    requiresNickname
+  )
+    return null;
 
   // Capture non-null user for use inside async function
   const currentUser = user;
@@ -62,7 +81,7 @@ export function NamePromptModal() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Datta"
+              placeholder="Enter your name"
               className="w-full px-4 py-3 rounded-xl border border-sheet-border bg-sheet-bg text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-600 font-medium text-sm transition-all"
               autoFocus
               required

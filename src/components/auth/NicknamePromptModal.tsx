@@ -13,7 +13,15 @@ import { Check, Loader2 } from "lucide-react";
  * saves the nickname to Firestore before clearing the flag.
  */
 export function NicknamePromptModal() {
-  const { user, requiresNickname, setRequiresNickname, setUser } = useAuthStore();
+  const {
+    user,
+    requiresNickname,
+    setRequiresNickname,
+    requiresAccountType,
+    requiresFactoryName,
+    requiresPhoneNumber,
+    setUser,
+  } = useAuthStore();
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +33,15 @@ export function NicknamePromptModal() {
     }
   }, [requiresNickname]);
 
-  if (!requiresNickname || !user) return null;
+  if (
+    !requiresNickname ||
+    !user ||
+    requiresAccountType ||
+    requiresFactoryName ||
+    requiresPhoneNumber ||
+    user.accountType === "non-owner"
+  )
+    return null;
 
   const currentUser = user;
 
@@ -87,7 +103,7 @@ export function NicknamePromptModal() {
           value={value}
           onChange={(e) => { setValue(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-          placeholder="e.g. Alex, Phani, DataWizard…"
+          placeholder="Enter nickname…"
           maxLength={32}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 transition-all mb-1 font-medium"
         />

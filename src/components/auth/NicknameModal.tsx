@@ -72,7 +72,7 @@ export function NicknameModal({ onConfirm }: NicknameModalProps) {
           value={value}
           onChange={(e) => { setValue(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-          placeholder="e.g. Alex, Phani, DataWizard…"
+          placeholder="Enter nickname…"
           maxLength={32}
           className="w-full bg-sheet-bg border border-sheet-border rounded-xl px-3 py-2.5 text-sm text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 transition-all mb-1 font-medium"
         />

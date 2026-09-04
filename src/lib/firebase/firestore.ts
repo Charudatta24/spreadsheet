@@ -30,10 +30,14 @@ import type {
   RowHeights,
   MeasurementSheet,
   CalculationSheet,
+  AccountingTransaction,
+  AccountingNote,
 } from "@/types";
 import { nanoid } from "nanoid";
 
 const DOCS_COLLECTION = "documents";
+const TRANSACTIONS_SUBCOLLECTION = "transactions";
+const ACCOUNTING_NOTES_SUBCOLLECTION = "accountingNotes";
 const CELLS_SUBCOLLECTION = "cells";
 
 // ─── Document CRUD ────────────────────────────────────────────────────────────
@@ -771,4 +775,288 @@ export async function deleteExpiredCalculationSheets(userId: string): Promise<vo
     }
   }
   await Promise.all(deletions);
+}
+
+// ─── AI Personal Accounting Notepad CRUD ─────────────────────────────────────
+
+/**
+ * Calculates expiration timestamp exactly 5 calendar months from creation time.
+ */
+export function calculate5MonthExpiry(fromMs: number): number {
+  const d = new Date(fromMs);
+  d.setMonth(d.getMonth() + 5);
+  return d.getTime();
+}
+
+/**
+ * Creates an accounting transaction under users/{userId}/transactions/{id}.
+ * Strictly enforces 5-month automatic data retention calculation.
+ */
+export async function createAccountingTransaction(
+  userId: string,
+  data: {
+    person: string;
+    amount: number;
+    currency?: string;
+    type: import("@/types").TransactionType;
+    description: string | null;
+    transactionDate: string;
+    originalText: string;
+  }
+): Promise<AccountingTransaction> {
+  const id = nanoid(12);
+  const now = Date.now();
+  const expiresAt = calculate5MonthExpiry(now);
+
+  const tx: AccountingTransaction = {
+    id,
+    userId,
+    person: data.person.trim(),
+    amount: Number(data.amount),
+    currency: data.currency || "INR",
+    type: data.type,
+    description: data.description ? data.description.trim() : null,
+    transactionDate: data.transactionDate,
+    createdAt: now,
+    updatedAt: now,
+    expiresAt,
+    originalText: data.originalText,
+  };
+
+  await setDoc(doc(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION, id), tx);
+  return tx;
+}
+
+/**
+ * Updates an existing transaction.
+ */
+export async function updateAccountingTransaction(
+  userId: string,
+  transactionId: string,
+  updates: Partial<Pick<AccountingTransaction, "person" | "amount" | "type" | "description" | "transactionDate">>
+): Promise<void> {
+  const ref = doc(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION, transactionId);
+  await updateDoc(ref, {
+    ...updates,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Deletes a single transaction.
+ */
+export async function deleteAccountingTransaction(
+  userId: string,
+  transactionId: string
+): Promise<void> {
+  await deleteDoc(doc(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION, transactionId));
+}
+
+/**
+ * Subscribes in real-time to all transactions for a user.
+ * Automatically purges any expired records (> 5 months) in the background.
+ */
+export function subscribeAccountingTransactions(
+  userId: string,
+  callback: (transactions: AccountingTransaction[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const now = Date.now();
+      const valid: AccountingTransaction[] = [];
+      const expiredIds: string[] = [];
+
+      snap.forEach((d) => {
+        const data = d.data() as AccountingTransaction;
+        if (data.expiresAt && data.expiresAt <= now) {
+          expiredIds.push(d.id);
+        } else {
+          valid.push({ ...data, id: d.id });
+        }
+      });
+
+      // Background auto-deletion of expired transactions
+      if (expiredIds.length > 0) {
+        const batch = writeBatch(db);
+        expiredIds.forEach((id) => {
+          batch.delete(doc(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION, id));
+        });
+        batch.commit().catch((err) => console.error("Auto-delete expired transactions error:", err));
+      }
+
+      callback(valid);
+    },
+    (err) => {
+      console.error("Failed to subscribe to accounting transactions:", err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Explicitly cleans up expired transactions for a user.
+ */
+export async function deleteExpiredAccountingTransactions(userId: string): Promise<number> {
+  const snap = await getDocs(collection(db, USERS_COLLECTION, userId, TRANSACTIONS_SUBCOLLECTION));
+  const now = Date.now();
+  const batch = writeBatch(db);
+  let count = 0;
+
+  snap.forEach((d) => {
+    const data = d.data();
+    if (data.expiresAt && data.expiresAt <= now) {
+      batch.delete(d.ref);
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    await batch.commit();
+  }
+  return count;
+}
+
+// ─── AI Personal Accounting Notes (Phone-Notes Style) ────────────────────────
+
+/**
+ * Creates a Date-based Accounting Note under users/{userId}/accountingNotes/{id}.
+ * Strictly enforces 5-month automatic data retention calculation.
+ */
+export async function createAccountingNote(
+  userId: string,
+  data: {
+    date: string; // YYYY-MM-DD
+    content: string;
+    transactions: AccountingTransaction[];
+    totalSent: number;
+    totalReceived: number;
+  }
+): Promise<AccountingNote> {
+  const id = nanoid(12);
+  const now = Date.now();
+  const expiresAt = calculate5MonthExpiry(now);
+
+  const note: AccountingNote = {
+    id,
+    userId,
+    date: data.date,
+    content: data.content,
+    transactions: data.transactions.map((t) => ({ ...t, id: t.id || nanoid(12), noteId: id, userId })),
+    totalSent: data.totalSent,
+    totalReceived: data.totalReceived,
+    createdAt: now,
+    updatedAt: now,
+    expiresAt,
+  };
+
+  await setDoc(doc(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION, id), note);
+  return note;
+}
+
+/**
+ * Updates an existing accounting note.
+ */
+export async function updateAccountingNote(
+  userId: string,
+  noteId: string,
+  updates: {
+    date?: string;
+    content?: string;
+    transactions?: AccountingTransaction[];
+    totalSent?: number;
+    totalReceived?: number;
+  }
+): Promise<void> {
+  const ref = doc(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION, noteId);
+  await updateDoc(ref, {
+    ...updates,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Deletes an accounting note.
+ */
+export async function deleteAccountingNote(
+  userId: string,
+  noteId: string
+): Promise<void> {
+  await deleteDoc(doc(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION, noteId));
+}
+
+/**
+ * Subscribes in real-time to all accounting notes for a user.
+ * Automatically purges any notes past 5-month expiration.
+ */
+export function subscribeAccountingNotes(
+  userId: string,
+  callback: (notes: AccountingNote[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION),
+    orderBy("date", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const now = Date.now();
+      const valid: AccountingNote[] = [];
+      const expiredIds: string[] = [];
+
+      snap.forEach((d) => {
+        const data = d.data() as AccountingNote;
+        if (data.expiresAt && data.expiresAt <= now) {
+          expiredIds.push(d.id);
+        } else {
+          valid.push({ ...data, id: d.id });
+        }
+      });
+
+      if (expiredIds.length > 0) {
+        const batch = writeBatch(db);
+        expiredIds.forEach((id) => {
+          batch.delete(doc(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION, id));
+        });
+        batch.commit().catch((err) => console.error("Auto-delete expired notes error:", err));
+      }
+
+      callback(valid);
+    },
+    (err) => {
+      console.error("Failed to subscribe to accounting notes:", err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Subscribes in real-time to a single accounting note by ID.
+ */
+export function subscribeAccountingNote(
+  userId: string,
+  noteId: string,
+  callback: (note: AccountingNote | null) => void
+): Unsubscribe {
+  const ref = doc(db, USERS_COLLECTION, userId, ACCOUNTING_NOTES_SUBCOLLECTION, noteId);
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+      } else {
+        callback({ ...(snap.data() as AccountingNote), id: snap.id });
+      }
+    },
+    (err) => {
+      console.error("Failed to subscribe to accounting note:", err);
+      callback(null);
+    }
+  );
 }

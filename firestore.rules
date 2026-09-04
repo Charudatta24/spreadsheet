@@ -29,6 +29,18 @@ service cloud.firestore {
         allow write: if isSignedIn();   // accept/remove writes to both sides
         allow delete: if isSignedIn();  // remove-friend deletes from both sides
       }
+
+      // Personal Accounting Transactions sub-collection
+      // Strictly private to the owning user only.
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Personal Accounting Notes (Phone-Notes Style)
+      // Strictly private to the owning user only.
+      match /accountingNotes/{noteId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ── Friend requests ───────────────────────────────────────────────────────

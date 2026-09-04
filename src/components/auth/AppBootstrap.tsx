@@ -6,7 +6,6 @@ import { useAuthInit } from "@/hooks/useAuthInit";
 import { useAuthStore } from "@/lib/sync/authStore";
 import { LoginScreen } from "./LoginScreen";
 import { LoadingGrid } from "@/components/ui/LoadingGrid";
-import { OwnerRetentionNotice } from "./OwnerRetentionNotice";
 import { SplashIntro } from "./SplashIntro";
 
 /**
@@ -77,7 +76,6 @@ export function AppBootstrap({ children }: { children: React.ReactNode }) {
         <div className={`h-full w-full${isRehydrating ? " pointer-events-none" : ""}`}>
           {children}
         </div>
-        <OwnerRetentionNotice />
 
         {/* Blurred overlay loading animation while Firebase rehydrates */}
         {isRehydrating && (

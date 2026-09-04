@@ -324,3 +324,63 @@ export type CalculationSheet = {
   belowValue: number | null;
   belowTotalValue: number | null;
 };
+
+// ─── AI Personal Accounting Notepad ──────────────────────────────────────────
+
+export type TransactionType = "sent" | "received";
+
+export interface AccountingTransaction {
+  id: string;
+  userId: string;
+  noteId?: string; // Optional parent note ID
+  person: string;
+  amount: number;
+  currency: string; // default "INR"
+  type: TransactionType;
+  description: string | null;
+  transactionDate: string; // formatted "YYYY-MM-DD"
+  createdAt: number; // timestamp ms
+  updatedAt: number; // timestamp ms
+  expiresAt: number; // createdAt + 5 calendar months (timestamp ms)
+  originalText: string;
+}
+
+export interface AccountingNote {
+  id: string;
+  userId: string;
+  date: string; // "YYYY-MM-DD"
+  content: string; // Raw notepad text (can be multi-line)
+  transactions: AccountingTransaction[]; // All extracted items
+  totalSent: number;
+  totalReceived: number;
+  createdAt: number;
+  updatedAt: number;
+  expiresAt: number; // 5-month automatic data retention
+}
+
+export interface AIExtractionResult {
+  success: boolean;
+  needsClarification?: boolean;
+  clarificationQuestion?: string;
+  clarificationField?: "person" | "amount" | "type" | "date";
+  transactions?: Array<{
+    person: string;
+    amount: number;
+    currency: string;
+    type: TransactionType;
+    description: string | null;
+    date: string; // YYYY-MM-DD
+    originalText: string;
+  }>;
+  data?: {
+    person: string;
+    amount: number;
+    currency: string;
+    type: TransactionType;
+    description: string | null;
+    date: string; // YYYY-MM-DD
+    originalText: string;
+  };
+  error?: string;
+}
+

@@ -60,42 +60,61 @@ export function useAuthInit(): void {
         setUser(baseUser);
         
         if (!firebaseUser.isAnonymous) {
-          if (!effectiveDisplayName) {
-            setRequiresName(true);
-          } else {
-            setRequiresName(false);
-          }
-
+          // 1. Account type MUST be chosen first
           if (!effectiveAccountType) {
             setRequiresAccountType(true);
             setRequiresWorkType(false);
+            setRequiresName(false);
+            setRequiresFactoryName(false);
+            setRequiresNickname(false);
+            setRequiresPhoneNumber(false);
           } else {
             setRequiresAccountType(false);
-            if (effectiveAccountType === "non-owner" && !effectiveWorkType) {
-              setRequiresWorkType(true);
-            } else {
+
+            if (effectiveAccountType === "non-owner") {
+              // Non-owners: ask for Work Type (Cutting / Polish), and Name. Nothing else.
+              setRequiresFactoryName(false);
+              setRequiresPhoneNumber(false);
+              setRequiresNickname(false);
+
+              if (!effectiveWorkType) {
+                setRequiresWorkType(true);
+                setRequiresName(false);
+              } else {
+                setRequiresWorkType(false);
+                setRequiresName(!effectiveDisplayName);
+              }
+            } else if (effectiveAccountType === "owner") {
               setRequiresWorkType(false);
+
+              // 2. Factory name is ONLY for OWNER accounts
+              if (!effectiveFactoryName) {
+                setRequiresFactoryName(true);
+              } else {
+                setRequiresFactoryName(false);
+
+                // 3. Phone number is ONLY for OWNER accounts (after factory name)
+                if (!effectivePhoneNumber) {
+                  setRequiresPhoneNumber(true);
+                } else {
+                  setRequiresPhoneNumber(false);
+
+                  // 4. Nickname for owners who haven't set one yet
+                  if (!effectiveNickname) {
+                    setRequiresNickname(true);
+                  } else {
+                    setRequiresNickname(false);
+                  }
+                }
+              }
+
+              // 5. Display name
+              if (!effectiveDisplayName) {
+                setRequiresName(true);
+              } else {
+                setRequiresName(false);
+              }
             }
-          }
-
-          if (!effectiveFactoryName) {
-            setRequiresFactoryName(true);
-          } else {
-            setRequiresFactoryName(false);
-          }
-
-          // Require nickname for ALL users (new and existing) who haven't set one yet
-          if (!effectiveNickname) {
-            setRequiresNickname(true);
-          } else {
-            setRequiresNickname(false);
-          }
-
-          // Require phone number for OWNER accounts (new and existing) who haven't set one yet
-          if (effectiveAccountType === "owner" && !effectivePhoneNumber) {
-            setRequiresPhoneNumber(true);
-          } else {
-            setRequiresPhoneNumber(false);
           }
         } else {
           setRequiresName(false);

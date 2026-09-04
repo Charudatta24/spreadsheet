@@ -13,7 +13,14 @@ import { Phone, Check, Loader2 } from "lucide-react";
  * and local auth state.
  */
 export function PhoneNumberPromptModal() {
-  const { user, requiresPhoneNumber, setRequiresPhoneNumber, setUser } = useAuthStore();
+  const {
+    user,
+    requiresPhoneNumber,
+    setRequiresPhoneNumber,
+    requiresAccountType,
+    requiresFactoryName,
+    setUser,
+  } = useAuthStore();
   const [phone, setPhone] = useState(user?.phoneNumber || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,8 +32,15 @@ export function PhoneNumberPromptModal() {
     }
   }, [requiresPhoneNumber]);
 
-  // Only show for owners who require a phone number
-  if (!requiresPhoneNumber || !user || user.accountType !== "owner") return null;
+  // Only show for owners who require a phone number, after account type and factory name are done
+  if (
+    !requiresPhoneNumber ||
+    !user ||
+    user.accountType !== "owner" ||
+    requiresAccountType ||
+    requiresFactoryName
+  )
+    return null;
 
   const currentUser = user;
 
@@ -95,7 +109,7 @@ export function PhoneNumberPromptModal() {
                 setPhone(e.target.value);
                 setError("");
               }}
-              placeholder="e.g. +91 98765 43210"
+              placeholder="Enter phone number"
               className="w-full px-4 py-3 rounded-xl border border-sheet-border bg-sheet-bg text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-600 font-medium text-sm transition-all"
               autoFocus
               required

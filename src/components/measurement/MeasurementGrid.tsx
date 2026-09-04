@@ -520,7 +520,7 @@ export function MeasurementGrid({
               value={remarkInput}
               onChange={(e) => setRemarkInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && saveRemark()}
-              placeholder="e.g. Wall measurement - Room 2"
+              placeholder="Enter remark or description…"
               autoFocus
               className="w-full bg-slate-50 border border-sheet-border rounded-xl px-3 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/40"
             />

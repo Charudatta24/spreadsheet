@@ -6,12 +6,20 @@ import { setUserProfile } from "@/lib/firebase/firestore";
 import { Building2, Check, Loader2 } from "lucide-react";
 
 export function FactoryNamePromptModal() {
-  const { user, requiresFactoryName, setRequiresFactoryName, setUser } = useAuthStore();
+  const {
+    user,
+    requiresFactoryName,
+    setRequiresFactoryName,
+    requiresAccountType,
+    setRequiresPhoneNumber,
+    setUser,
+  } = useAuthStore();
   const [factoryName, setFactoryName] = useState(user?.factoryName || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  if (!requiresFactoryName || !user) return null;
+  // Factory name should ONLY be asked for OWNER accounts, and NEVER before account type is selected
+  if (!requiresFactoryName || !user || user.accountType !== "owner" || requiresAccountType) return null;
 
   const currentUser = user;
 
@@ -33,6 +41,9 @@ export function FactoryNamePromptModal() {
 
       setUser({ ...currentUser, factoryName: trimmed });
       setRequiresFactoryName(false);
+      if (!currentUser.phoneNumber) {
+        setRequiresPhoneNumber(true);
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to save Factory Name. Please try again.");
@@ -60,7 +71,7 @@ export function FactoryNamePromptModal() {
               type="text"
               value={factoryName}
               onChange={(e) => setFactoryName(e.target.value)}
-              placeholder="e.g. Valley Stone Granites"
+              placeholder="Enter factory name"
               className="w-full px-4 py-3 rounded-xl border border-sheet-border bg-sheet-bg text-sheet-text placeholder:text-sheet-muted focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-600 font-medium text-sm transition-all"
               autoFocus
               required

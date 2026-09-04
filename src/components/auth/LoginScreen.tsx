@@ -15,7 +15,6 @@ import { useAuthStore } from "@/lib/sync/authStore";
 import { LoadingPortal } from "@/components/ui/LoadingPortal";
 import { getUserProfile, setUserProfile } from "@/lib/firebase/firestore";
 import { NicknameModal } from "./NicknameModal";
-import { markOwnerRetentionNoticePending } from "@/lib/measurementRetention";
 import type { AppUser } from "@/types";
 
 const provider = new GoogleAuthProvider();
@@ -49,7 +48,6 @@ export function LoginScreen() {
   const { setUser } = useAuthStore();
 
   async function finishSignIn(uid: string, displayName: string, email: string | null, photoURL: string | null) {
-    markOwnerRetentionNoticePending();
     const color = colorForUid(uid);
 
     let savedProfile: { displayName?: string; nickname?: string; accountType?: any; workType?: any; factoryName?: string } | null = null;

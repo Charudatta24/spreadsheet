@@ -1404,7 +1404,7 @@ function MeasurementDashboardContent() {
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    placeholder="e.g. 1, 50, 100…"
+                    placeholder="1, 50, 100…"
                     value={formNumSlabs}
                     onChange={(e) => {
                       const raw = e.target.value;
